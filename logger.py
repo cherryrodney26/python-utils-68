@@ -1,29 +1,35 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-class AppLogger:
-    """Standardized application logger setup."""
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+    """
+    Configures a rotating file logger for application monitoring.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-    def __init__(self, name: str = "python-utils-68", level: int = logging.INFO):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        self._setup_handler()
+    # Prevent duplicate handlers if setup is called multiple times
+    if not logger.handlers:
+        # 5MB per file, keep 3 backups
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
+        
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    def _setup_handler(self) -> None:
-        """Configure console output formatting."""
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        # Add console output for development visibility
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
-    def get_logger(self) -> logging.Logger:
-        return self.logger
+    return logger
 
-def get_default_logger(name: str = "python-utils-68") -> logging.Logger:
-    """Factory function for global logger access."""
-    return AppLogger(name).get_logger()
+# Default instance for quick access
+app_logger = setup_logger('python-utils-68')
