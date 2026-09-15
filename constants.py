@@ -1,35 +1,37 @@
-import enum
-from typing import Final, Dict, Any
+import os
+import re
 
-# general status codes for data operations
-class DataStatus(enum.IntEnum):
-    SUCCESS = 200
-    BAD_REQUEST = 400
-    NOT_FOUND = 404
-    SERVER_ERROR = 500
+# Standard environmental configurations
+DEFAULT_ENCODING = "utf-8"
+MAX_RETRY_ATTEMPTS = 3
+TIMEOUT_SECONDS = 30
 
-# default processing configurations
-DEFAULT_CHUNK_SIZE: Final[int] = 1024
-DEFAULT_TIMEOUT: Final[float] = 30.0
-MAX_RETRIES: Final[int] = 3
+# Common validation patterns
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-# registry for supported data types
-SUPPORTED_MIME_TYPES: Final[Dict[str, str]] = {
-    'json': 'application/json',
-    'csv': 'text/csv',
-    'xml': 'application/xml'
-}
+# Default file paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+TEMP_DIR = os.path.join(BASE_DIR, "tmp")
 
-def get_error_message(status_code: int) -> str:
-    """maps status codes to human-readable strings"""
-    messages = {
-        DataStatus.SUCCESS: "operation completed successfully",
-        DataStatus.BAD_REQUEST: "invalid data structure provided",
-        DataStatus.NOT_FOUND: "requested resource does not exist",
-        DataStatus.SERVER_ERROR: "internal processing failure"
+# HTTP response codes for application logic
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_BAD_REQUEST = 400
+HTTP_UNAUTHORIZED = 401
+HTTP_NOT_FOUND = 404
+HTTP_SERVER_ERROR = 500
+
+# System limits
+BUFFER_SIZE = 1024 * 64
+CHUNK_SIZE = 1024 * 1024
+
+def get_app_constants():
+    """Returns a dictionary of all defined application constants."""
+    return {
+        "encoding": DEFAULT_ENCODING,
+        "retries": MAX_RETRY_ATTEMPTS,
+        "timeout": TIMEOUT_SECONDS,
+        "log_dir": LOG_DIR
     }
-    return messages.get(status_code, "unknown error occurred")
-
-# environmental constraint markers
-IS_DEBUG_MODE: Final[bool] = False
-VERSION_INFO: Final[str] = "1.0.0"
