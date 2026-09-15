@@ -1,24 +1,35 @@
-"""Common constants for general utility operations."""
+import enum
+from typing import Final, Dict, Any
 
-# Time conversions in seconds
-SEC_IN_MINUTE = 60
-SEC_IN_HOUR = 3600
-SEC_IN_DAY = 86400
-SEC_IN_WEEK = 604800
+# general status codes for data operations
+class DataStatus(enum.IntEnum):
+    SUCCESS = 200
+    BAD_REQUEST = 400
+    NOT_FOUND = 404
+    SERVER_ERROR = 500
 
-# Common file size limits in bytes
-KB_TO_BYTES = 1024
-MB_TO_BYTES = 1024 * 1024
-GB_TO_BYTES = 1024 * 1024 * 1024
+# default processing configurations
+DEFAULT_CHUNK_SIZE: Final[int] = 1024
+DEFAULT_TIMEOUT: Final[float] = 30.0
+MAX_RETRIES: Final[int] = 3
 
-# Datetime formatting strings
-ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-SIMPLE_DATE_FORMAT = "%Y-%m-%d"
-HUMAN_DATETIME_FORMAT = "%B %d, %Y, %I:%M %p"
+# registry for supported data types
+SUPPORTED_MIME_TYPES: Final[Dict[str, str]] = {
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'xml': 'application/xml'
+}
 
-# Common regex validation patterns as strings
-EMAIL_PATTERN = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+[.][a-zA-Z]{2,}$"
-URL_PATTERN = "^https?://[a-zA-Z0-9.-]+[.][a-zA-Z]{2,}(/.*)?$"
+def get_error_message(status_code: int) -> str:
+    """maps status codes to human-readable strings"""
+    messages = {
+        DataStatus.SUCCESS: "operation completed successfully",
+        DataStatus.BAD_REQUEST: "invalid data structure provided",
+        DataStatus.NOT_FOUND: "requested resource does not exist",
+        DataStatus.SERVER_ERROR: "internal processing failure"
+    }
+    return messages.get(status_code, "unknown error occurred")
 
-# Common HTTP status codes
-HTTP_OK =
+# environmental constraint markers
+IS_DEBUG_MODE: Final[bool] = False
+VERSION_INFO: Final[str] = "1.0.0"
