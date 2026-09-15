@@ -1,38 +1,50 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+def setup_logger(
+    name: str,
+    log_file: str,
+    level: int = logging.INFO,
+    max_bytes: int = 1048576,  # 1 MB
+    backup_count: int = 5,
+    log_to_console: bool = True
+) -> logging.Logger:
     """
-    Configures a rotating file logger for general application use.
+    Configures and returns a logger instance with rotating file support
+    and optional stream logging to console.
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if logger is re-initialized
-    if not logger.handlers:
-        # Format: timestamp - name - level - message
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    # Prevent duplicate handlers if the logger is re-initialized
+    if logger.hasHandlers():
+        return logger
 
-        # Rotate at 5MB, keep 3 backup files
-        file_handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5 * 1024 * 1024, 
-            backupCount=3
-        )
-        file_handler.setFormatter(formatter)
+    log_format = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
-        # Console output for visibility
+    # Ensure the parent directory for the log file exists
+    log_dir = os.path.dirname(log_file)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+
+    # Set up rotating file handler to prevent disk space exhaustion
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=max_bytes,
+        backupCount=backup_count
+    )
+    file_handler.setFormatter(log_format)
+    file_handler.setLevel(level)
+    logger.addHandler(file_handler)
+
+    # Optional console output integration
+    if log_to_console:
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-
-        logger.addHandler(file_handler)
+        console_handler.setFormatter(log_format)
+        console_handler.setLevel(level)
         logger.addHandler(console_handler)
 
     return logger
-
-if __name__ == '__main__':
-    log = setup_logger('dev_logger')
-    log.info('logger initialization successful')
