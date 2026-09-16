@@ -1,38 +1,33 @@
-from typing import List, Optional, Any, Callable
+import functools
+from typing import Callable, Any
+import time
 
-def filter_none(data: List[Optional[Any]]) -> List[Any]:
-    """Remove all None entries from a list.
+_memoization_cache = {}
 
-    Args:
-        data: A list containing optional elements.
+def memoize_with_ttl(ttl_seconds: int = 300) -> Callable:
+    """Decorator for caching function results with time-to-live."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            key = (func.__name__, args, frozenset(kwargs.items()))
+            now = time.time()
+            
+            if key in _memoization_cache:
+                result, timestamp = _memoization_cache[key]
+                if now - timestamp < ttl_seconds:
+                    return result
+            
+            result = func(*args, **kwargs)
+            _memoization_cache[key] = (result, now)
+            return result
+        return wrapper
+    return decorator
 
-    Returns:
-        A filtered list containing only non-None values.
-    """
-    return [item for item in data if item is not None]
+def batch_process(data: list, chunk_size: int = 100):
+    """Generator for memory-efficient chunked list processing."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
-def apply_transformation(items: List[Any], func: Callable[[Any], Any]) -> List[Any]:
-    """Apply a transformation function to each item in a list.
-
-    Args:
-        items: The input list of elements.
-        func: A callable function to transform each element.
-
-    Returns:
-        A new list with transformed values.
-    """
-    return [func(item) for item in items]
-
-def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of a fixed size.
-
-    Args:
-        items: The list to be partitioned.
-        size: The maximum size of each chunk.
-
-    Returns:
-        A list of lists containing the chunks.
-    """
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    return [items[i:i + size] for i in range(0, len(items), size)]
+def optimized_join(items: list[str]) -> str:
+    """Efficient string concatenation for large datasets."""
+    return ''.join(items)
