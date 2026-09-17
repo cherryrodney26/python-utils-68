@@ -1,37 +1,33 @@
-import os
-import re
+from typing import Final, Dict, List
 
-# Standard environmental configurations
-DEFAULT_ENCODING = "utf-8"
-MAX_RETRY_ATTEMPTS = 3
-TIMEOUT_SECONDS = 30
+# Configuration settings for system components
+DEFAULT_TIMEOUT: Final[int] = 30
+MAX_RETRIES: Final[int] = 5
 
-# Common validation patterns
-EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+# Standard HTTP status mapping
+STATUS_CODES: Final[Dict[int, str]] = {
+    200: "OK",
+    400: "BAD_REQUEST",
+    404: "NOT_FOUND",
+    500: "INTERNAL_SERVER_ERROR"
+}
 
-# Default file paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-TEMP_DIR = os.path.join(BASE_DIR, "tmp")
+# Default supported file extensions
+SUPPORTED_EXTENSIONS: Final[List[str]] = [".json", ".yaml", ".yml", ".toml"]
 
-# HTTP response codes for application logic
-HTTP_OK = 200
-HTTP_CREATED = 201
-HTTP_BAD_REQUEST = 400
-HTTP_UNAUTHORIZED = 401
-HTTP_NOT_FOUND = 404
-HTTP_SERVER_ERROR = 500
+class AppConstants:
+    """Container class for static application constants."""
 
-# System limits
-BUFFER_SIZE = 1024 * 64
-CHUNK_SIZE = 1024 * 1024
+    VERSION: Final[str] = "1.0.0"
+    ENV_PROD: Final[str] = "production"
+    ENV_DEV: Final[str] = "development"
 
-def get_app_constants():
-    """Returns a dictionary of all defined application constants."""
-    return {
-        "encoding": DEFAULT_ENCODING,
-        "retries": MAX_RETRY_ATTEMPTS,
-        "timeout": TIMEOUT_SECONDS,
-        "log_dir": LOG_DIR
-    }
+    @classmethod
+    def get_supported_formats(cls) -> List[str]:
+        """Return list of supported file formats."""
+        return SUPPORTED_EXTENSIONS
+
+    @classmethod
+    def is_success(cls, code: int) -> bool:
+        """Check if the provided status code indicates success."""
+        return code == 200
