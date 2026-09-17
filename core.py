@@ -1,42 +1,29 @@
-import logging
-from typing import Any, Optional, Union
+import collections.abc
+from typing import Any, Dict, List, Union
 
-logger = logging.getLogger(__name__)
+def deep_flatten(items: Iterable[Any]) -> List[Any]:
+    """Flatten nested structures into a single list."""
+    result = []
+    for item in items:
+        if isinstance(item, (list, tuple, set)) and not isinstance(item, (str, bytes)):
+            result.extend(deep_flatten(item))
+        else:
+            result.append(item)
+    return result
 
-class DataProcessor:
-    """Handles core data processing with defensive error handling."""
-    
-    def __init__(self, settings: Optional[dict] = None):
-        self.settings = settings or {}
+def sanitize_dict(data: Dict[str, Any], keys_to_mask: List[str] = None) -> Dict[str, Any]:
+    """Redact sensitive values in a dictionary."""
+    keys_to_mask = keys_to_mask or ['password', 'token', 'secret']
+    sanitized = data.copy()
+    for key in sanitized:
+        if key.lower() in keys_to_mask:
+            sanitized[key] = '********'
+        elif isinstance(sanitized[key], dict):
+            sanitized[key] = sanitize_dict(sanitized[key], keys_to_mask)
+    return sanitized
 
-    def safe_transform(self, data: Any) -> Union[Any, None]:
-        """Applies transformation with exhaustive error handling for edge cases."""
-        try:
-            if data is None:
-                logger.warning("Attempted to process null data input")
-                return None
-            
-            # Simulate potential processing error
-            if not isinstance(data, (str, int, float, list, dict)):
-                raise ValueError(f"Unsupported data type: {type(data).__name__}")
-                
-            return str(data).strip()
-
-        except ValueError as ve:
-            logger.error(f"Validation failure: {ve}")
-            return None
-        except Exception as e:
-            logger.critical(f"Unexpected system failure: {e}", exc_info=True)
-            return None
-
-    def batch_process(self, items: list) -> list:
-        """Processes list items while isolating failures."""
-        if not isinstance(items, list):
-            return []
-        
-        results = []
-        for item in items:
-            result = self.safe_transform(item)
-            if result is not None:
-                results.append(result)
-        return results
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """Split a list into smaller chunks."""
+    if size <= 0:
+        raise ValueError("chunk size must be positive")
+    return [data[i:i + size] for i in range(0, len(data), size)]
