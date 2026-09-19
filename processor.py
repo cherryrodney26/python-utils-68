@@ -1,34 +1,43 @@
 import logging
 
-# Configure logger for module tracking
+# Configure logging for the processor
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def process_input_stream(data_stream):
-    """Processes stream and validates individual inputs."""
-    for item in data_stream:
-        try:
-            # Validate mandatory keys presence
-            if not isinstance(item, dict) or 'id' not in item:
-                logger.warning(f"Invalid item format encountered: {item}")
-                continue
+def process_data(items):
+    """Processes a list of items with input validation."""
+    processed_results = []
+    
+    for index, item in enumerate(items):
+        # Validate input schema: expected integer and non-empty string
+        if not isinstance(item, dict) or 'id' not in item or 'value' not in item:
+            logger.warning(f"Skipping invalid item at index {index}: {item}")
+            continue
 
-            # Validate payload constraint
-            payload = item.get('value')
-            if not isinstance(payload, (int, float)):
-                logger.error(f"Invalid numeric value for id {item['id']}")
-                continue
+        item_id = item['id']
+        value = item['value']
 
-            # Proceed with business logic
-            execute_task(item)
+        if not isinstance(item_id, int) or not isinstance(value, str):
+            logger.error(f"Type mismatch in item {item_id}, skipping.")
+            continue
 
-        except Exception as e:
-            logger.exception(f"Unexpected loop error: {e}")
+        if len(value) == 0:
+            logger.warning(f"Empty value string in item {item_id}, skipping.")
+            continue
 
-def execute_task(data):
-    """Dummy processing unit."""
-    print(f"Processing task {data['id']}: {data['value']}")
+        # Perform dummy processing logic
+        result = f"Processed-{item_id}-{value.upper()}"
+        processed_results.append(result)
+        logger.info(f"Successfully processed item {item_id}")
+
+    return processed_results
 
 if __name__ == "__main__":
-    # Simulation of incoming data processing
-    raw_data = [{'id': 1, 'value': 100}, {'id': 2, 'value': 'bad'}, {'id': 3, 'value': 250}]
-    process_input_stream(raw_data)
+    data = [
+        {"id": 1, "value": "alpha"},
+        {"id": 2, "value": ""},
+        "invalid_type",
+        {"id": 3, "value": "beta"}
+    ]
+    results = process_data(data)
+    print(f"Final count: {len(results)}")
