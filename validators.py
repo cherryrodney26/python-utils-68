@@ -1,30 +1,30 @@
-import functools
-from typing import Any, Callable, Dict
+import re
+from typing import Any, Optional
 
-# global cache for validation results
-_validation_cache: Dict[tuple, bool] = {}
+def is_email(email: str) -> bool:
+    """Validate standard email address format."""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
 
-def memoized_validator(func: Callable) -> Callable:
-    """decorator for caching expensive validation logic results"""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> bool:
-        key = (func.__name__, args, tuple(sorted(kwargs.items())))
-        if key not in _validation_cache:
-            _validation_cache[key] = func(*args, **kwargs)
-        return _validation_cache[key]
-    return wrapper
+def is_uuid(uuid_str: str) -> bool:
+    """Validate RFC 4122 UUID strings."""
+    pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    return bool(re.match(pattern, uuid_str.lower()))
 
-@memoized_validator
-def validate_schema(data_hash: str, schema_version: int) -> bool:
-    """expensive schema structure verification"""
-    # simulate heavy computation task
-    result = (len(data_hash) == 64 and schema_version > 0)
-    return result
+def validate_range(value: Any, min_val: float, max_val: float) -> bool:
+    """Check if numeric value is within bounds."""
+    if not isinstance(value, (int, float)):
+        return False
+    return min_val <= value <= max_val
 
-def clear_validator_cache() -> None:
-    """resource management for cache eviction"""
-    _validation_cache.clear()
+def require_non_empty(data: Optional[Any]) -> bool:
+    """Ensure data is not None or empty container."""
+    if data is None:
+        return False
+    if isinstance(data, (str, list, dict, set)):
+        return len(data) > 0
+    return True
 
-def batch_validate(items: list, schema_version: int) -> list:
-    """optimized batch processing for input items"""
-    return [validate_schema(item, schema_version) for item in items]
+def is_alphanumeric(value: str) -> bool:
+    """Check for strictly alphanumeric characters."""
+    return value.isalnum()
