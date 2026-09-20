@@ -1,29 +1,38 @@
-import collections.abc
-from typing import Any, Dict, List, Union
+import json
+import os
+from typing import Any, Dict, Optional
 
-def deep_flatten(items: Iterable[Any]) -> List[Any]:
-    """Flatten nested structures into a single list."""
-    result = []
-    for item in items:
-        if isinstance(item, (list, tuple, set)) and not isinstance(item, (str, bytes)):
-            result.extend(deep_flatten(item))
+def ensure_dir(path: str) -> None:
+    """Creates directory if it does not exist."""
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def load_json(filepath: str) -> Dict[str, Any]:
+    """Reads and parses a JSON file."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_json(data: Dict[str, Any], filepath: str) -> None:
+    """Serializes data to a JSON file."""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
+
+def get_env(key: str, default: Optional[str] = None) -> str:
+    """Retrieves environment variable with default."""
+    return os.environ.get(key, default) or ''
+
+def chunk_list(data: list, size: int):
+    """Yields successive chunks from list."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
+    """Flattens nested dictionary structure."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
-            result.append(item)
-    return result
-
-def sanitize_dict(data: Dict[str, Any], keys_to_mask: List[str] = None) -> Dict[str, Any]:
-    """Redact sensitive values in a dictionary."""
-    keys_to_mask = keys_to_mask or ['password', 'token', 'secret']
-    sanitized = data.copy()
-    for key in sanitized:
-        if key.lower() in keys_to_mask:
-            sanitized[key] = '********'
-        elif isinstance(sanitized[key], dict):
-            sanitized[key] = sanitize_dict(sanitized[key], keys_to_mask)
-    return sanitized
-
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks."""
-    if size <= 0:
-        raise ValueError("chunk size must be positive")
-    return [data[i:i + size] for i in range(0, len(data), size)]
+            items.append((new_key, v))
+    return dict(items)
