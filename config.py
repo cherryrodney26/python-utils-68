@@ -2,33 +2,38 @@ import json
 import os
 from typing import Any, Dict
 
-class ConfigLoader:
-    """Handles loading configuration from JSON files with fallback defaults."""
+def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Loads configuration from a JSON file, merging with provided defaults.
+    Returns the merged configuration dictionary.
+    """
+    config = defaults.copy()
 
-    def __init__(self, default_config: Dict[str, Any] = None):
-        self._defaults = default_config or {}
-
-    def load(self, filepath: str) -> Dict[str, Any]:
-        """Loads configuration from a file, merging with default values."""
-        config = self._defaults.copy()
-
-        if not os.path.exists(filepath):
-            return config
-
-        try:
-            with open(filepath, 'r') as f:
-                file_data = json.load(f)
-                config.update(file_data)
-        except (json.JSONDecodeError, IOError):
-            return config
-
+    if not os.path.exists(filepath):
         return config
 
-    @staticmethod
-    def get_env_override(key: str, default: Any = None) -> Any:
-        """Retrieves configuration from environment variables."""
-        return os.getenv(key.upper(), default)
+    try:
+        with open(filepath, 'r') as f:
+            user_config = json.load(f)
+            if isinstance(user_config, dict):
+                config.update(user_config)
+    except (json.JSONDecodeError, IOError):
+        pass
 
-# Example usage:
-# loader = ConfigLoader({"host": "localhost", "port": 8080})
-# settings = loader.load("config.json")
+    return config
+
+def save_config(filepath: str, config: Dict[str, Any]) -> None:
+    """
+    Persists the current configuration dictionary to a JSON file.
+    """
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(config, f, indent=4)
+    except IOError:
+        pass
+
+if __name__ == '__main__':
+    # Example usage
+    default_settings = {"host": "localhost", "port": 8080}
+    settings = load_config("config.json", default_settings)
+    print(f"Active configuration: {settings}")
