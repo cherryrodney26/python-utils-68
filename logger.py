@@ -2,14 +2,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO):
-    """
-    Configures a logger with file rotation.
-    """
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+    """Configures a rotating file logger."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if called multiple times
+    # Prevent duplicate handlers if logger is re-initialized
     if not logger.handlers:
         # 5MB per file, keep 3 backups
         handler = RotatingFileHandler(
@@ -23,15 +21,14 @@ def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-
-        # Add console output as well
-        console = logging.StreamHandler()
-        console.setFormatter(formatter)
-        logger.addHandler(console)
+        
+        # Also output to console for development visibility
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
 
-if __name__ == '__main__':
-    # Example usage
-    log = setup_logger('dev_logger')
-    log.info('logger initialization successful')
+if __name__ == "__main__":
+    log = setup_logger("python-utils-68")
+    log.info("Logger initialized successfully")
