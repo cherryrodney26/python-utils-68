@@ -2,38 +2,38 @@ import json
 import os
 from typing import Any, Dict
 
-def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Loads configuration from a JSON file, merging with provided defaults.
-    Returns the merged configuration dictionary.
-    """
-    config = defaults.copy()
+class ConfigLoader:
+    """Handles loading and merging application configurations with defaults."""
+    
+    def __init__(self, default_config: Dict[str, Any]):
+        self._defaults = default_config
 
-    if not os.path.exists(filepath):
+    def load_from_file(self, filepath: str) -> Dict[str, Any]:
+        """Load config from json file, merging with defaults."""
+        config = self._defaults.copy()
+
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r') as f:
+                    user_config = json.load(f)
+                    config.update(user_config)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Could not load config file {filepath}: {e}")
+        
         return config
 
-    try:
-        with open(filepath, 'r') as f:
-            user_config = json.load(f)
-            if isinstance(user_config, dict):
-                config.update(user_config)
-    except (json.JSONDecodeError, IOError):
-        pass
+    def get_env_override(self, key: str, value: Any) -> Any:
+        """Override config value using environment variables."""
+        return os.getenv(key, value)
 
-    return config
-
-def save_config(filepath: str, config: Dict[str, Any]) -> None:
-    """
-    Persists the current configuration dictionary to a JSON file.
-    """
-    try:
-        with open(filepath, 'w') as f:
-            json.dump(config, f, indent=4)
-    except IOError:
-        pass
-
+# Example usage:
 if __name__ == '__main__':
-    # Example usage
-    default_settings = {"host": "localhost", "port": 8080}
-    settings = load_config("config.json", default_settings)
-    print(f"Active configuration: {settings}")
+    defaults = {"host": "localhost", "port": 8080, "debug": False}
+    loader = ConfigLoader(defaults)
+    
+    # Load merged configuration
+    final_cfg = loader.load_from_file('config.json')
+    
+    # Apply environment overrides
+    final_cfg['port'] = int(loader.get_env_override('APP_PORT', final_cfg['port']))
+    print(f"Configuration loaded: {final_cfg}")
