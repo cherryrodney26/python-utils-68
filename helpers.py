@@ -1,11 +1,18 @@
-"""General utility helper functions for sequence and dictionary operations."""
+from typing import Any, Dict, List, Sequence, TypeVar
 
-from typing import Any, Dict, Generator, List, Sequence, Tuple
+T = TypeVar("T")
 
 
-def deep_get(data: dict, path: str, default: Any = None, sep: str = ".") -> Any:
-    """Retrieve nested dictionary values using a dot-separated path string."""
-    keys = path.split(sep)
+def chunk_list(items: Sequence[T], chunk_size: int) -> List[Sequence[T]]:
+    """Split a sequence into smaller chunks of a specified size."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be a positive integer")
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
+
+
+def safe_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    """Retrieve nested dictionary value using a dot-separated key path."""
+    keys = path.split(".")
     current = data
     for key in keys:
         if isinstance(current, dict) and key in current:
@@ -15,29 +22,22 @@ def deep_get(data: dict, path: str, default: Any = None, sep: str = ".") -> Any:
     return current
 
 
-def chunk_sequence(sequence: Sequence[Any], chunk_size: int) -> Generator[Sequence[Any], None, None]:
-    """Yield successive n-sized chunks from a sequence."""
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be greater than zero")
-    for i in range(0, len(sequence), chunk_size):
-        yield sequence[i : i + chunk_size]
-
-
-def flatten_dict(data: dict, parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
-    """Flatten a nested dictionary into a single-level dictionary with delimited keys."""
-    items: List[Tuple[str, Any]] = []
-    for key, value in data.items():
-        new_key = f"{parent_key}{sep}{key}" if parent_key else key
-        if isinstance(value, dict):
-            items.extend(flatten_dict(value, new_key, sep=sep).items())
+def flatten_dict(data: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+    """Flatten a nested dictionary structure using dot notation keys."""
+    items: List[tuple] = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
-            items.append((new_key, value))
+            items.append((new_key, v))
     return dict(items)
 
 
-def safe_cast(val: Any, to_type: type, default: Any = None) -> Any:
-    """Safely cast a value to a target type, returning default on failure."""
-    try:
-        return to_type(val)
-    except (ValueError, TypeError):
-        return default
+def truncate_string(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate text to max_length appending suffix if shortened."""
+    if len(text) <= max_length:
+        return text
+    if max_length <= len(suffix):
+        return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
