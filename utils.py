@@ -1,40 +1,57 @@
-import time
-import random
-from functools import wraps
-import logging
+from typing import Any, List, Union, Type
 
-logger = logging.getLogger(__name__)
-
-def retry(exceptions, tries=4, delay=1, backoff=2, jitter=True):
+def safe_get(
+    data: Any,
+    path: Union[str, List[Union[str, int]]],
+    default: Any = None,
+    expected_type: Type = None
+) -> Any:
     """
-    Decorator to retry a function call with exponential backoff and jitter.
-
-    :param exceptions: Exception or tuple of exceptions to catch.
-    :param tries: Maximum number of times to try the function.
-    :param delay: Initial delay between retries in seconds.
-    :param backoff: Multiplier applied to delay after each retry.
-    :param jitter: Whether to apply a random jitter to the delay.
+    Safely retrieves a value from a deeply nested dictionary or list structure.
+    Handles key/index errors, type mismatches, and malformed path formats.
     """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    current_delay = mdelay
-                    if jitter:
-                        # Apply random jitter to avoid thundering herd problem
-                        current_delay *= random.uniform(0.5, 1.5)
+    if data is None:
+        return default
 
-                    logger.warning(
-                        f"Execution failed: {e}. Retrying in {current_delay:.2f} seconds... "
-                        f"({mtries - 1} attempts left)"
-                    )
-                    time.sleep(current_delay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+    # Normalize path into a list of keys/indices
+    if isinstance(path, str):
+        if not path.strip():
+            return default
+        keys = [k for k in path.split(".") if k]
+    elif isinstance(path, list):
+        keys = path
+    else:
+        return default
+
+    current = data
+    for key in keys:
+        if current is None:
+            return default
+
+        if isinstance(current, dict):
+            # Safely check membership to avoid KeyError on None-like dict values
+            if key not in current:
+                return default
+            current = current[key]
+        elif isinstance(current, list):
+            # Safely convert list keys and verify boundaries
+            try:
+                idx = int(key)
+                if idx < 0 or idx >= len(current):
+                    return default
+                current = current[idx]
+            except (ValueError, TypeError):
+                return default
+        else:
+            # Leaf node reached but path elements still remain
+            return default
+
+    # Validate and attempt type coercion if expected_type is specified
+    if expected_type is not None:
+        if not isinstance(current, expected_type):
+            try:
+                return expected_type(current)
+            except (ValueError, TypeError):
+                return default
+
+    return current
