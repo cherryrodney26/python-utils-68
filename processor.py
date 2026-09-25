@@ -1,40 +1,36 @@
-import functools
-from typing import Callable, Any
+import json
+from typing import Any, Dict, List, Optional
 
-# internal cache for intensive transformation tasks
-_MEMOIZATION_CACHE = {}
+def clean_data(data: Any, default: Any = None) -> Any:
+    """
+    Recursively cleans input data to handle None values or empty strings.
+    Returns a sanitized version of the provided input structure.
+    """
+    if isinstance(data, dict):
+        return {k: clean_data(v, default) for k, v in data.items() if v is not None}
+    elif isinstance(data, list):
+        return [clean_data(item, default) for item in data if item is not None]
+    return data if data is not None else default
 
-def memoize(func: Callable) -> Callable:
-    """decorator for caching function results to improve throughput"""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _MEMOIZATION_CACHE:
-            _MEMOIZATION_CACHE[key] = func(*args, **kwargs)
-        return _MEMOIZATION_CACHE[key]
-    return wrapper
+def batch_process(items: List[Dict], key: str, transform_func) -> List[Any]:
+    """
+    Applies a transformation function to specific keys in a list of dictionaries.
+    Returns a list of transformed values, skipping missing keys.
+    """
+    results = []
+    for item in items:
+        if key in item:
+            try:
+                results.append(transform_func(item[key]))
+            except (ValueError, TypeError):
+                continue
+    return results
 
-class DataProcessor:
-    """core processor for high-frequency data operations"""
-    
-    def __init__(self, batch_size: int = 1000):
-        self.batch_size = batch_size
-
-    @memoize
-    def transform(self, value: int) -> int:
-        """simulates expensive compute operation"""
-        result = 0
-        for i in range(1000):
-            result += (value * i) % 7
-        return result
-
-    def process_batch(self, data: list[int]) -> list[int]:
-        """optimized batch processing utilizing local cache"""
-        results = []
-        # using list comprehension for faster iteration
-        results = [self.transform(item) for item in data]
-        return results
-
-def clear_processor_cache() -> None:
-    """manual memory management for the global cache"""
-    _MEMOIZATION_CACHE.clear()
+def serialize_json(data: Any, indent: int = 4) -> str:
+    """
+    Safe serialization of complex objects into JSON strings.
+    """
+    try:
+        return json.dumps(data, indent=indent, default=str)
+    except (TypeError, ValueError):
+        return json.dumps({"error": "serialization failed"})
