@@ -1,33 +1,33 @@
-from typing import Final, Dict, List
+from typing import Final, Dict, Any
 
 # Configuration settings for system components
 DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 5
+MAX_RETRIES: Final[int] = 3
 
-# Standard HTTP status mapping
-STATUS_CODES: Final[Dict[int, str]] = {
-    200: "OK",
-    400: "BAD_REQUEST",
-    404: "NOT_FOUND",
-    500: "INTERNAL_SERVER_ERROR"
+# Standard HTTP status mapping for internal services
+STATUS_CODES: Final[Dict[str, int]] = {
+    "SUCCESS": 200,
+    "CREATED": 201,
+    "BAD_REQUEST": 400,
+    "UNAUTHORIZED": 401,
+    "NOT_FOUND": 404,
+    "SERVER_ERROR": 500
 }
 
-# Default supported file extensions
-SUPPORTED_EXTENSIONS: Final[List[str]] = [".json", ".yaml", ".yml", ".toml"]
+# Global application configuration defaults
+APP_CONFIG: Final[Dict[str, Any]] = {
+    "version": "1.0.0",
+    "environment": "production",
+    "debug_mode": False
+}
+
+def get_status_message(code: int) -> str:
+    """Return a descriptive message for a given status code."""
+    mapping: Dict[int, str] = {v: k for k, v in STATUS_CODES.items()}
+    return mapping.get(code, "UNKNOWN_STATUS")
 
 class AppConstants:
-    """Container class for static application constants."""
-
-    VERSION: Final[str] = "1.0.0"
-    ENV_PROD: Final[str] = "production"
-    ENV_DEV: Final[str] = "development"
-
-    @classmethod
-    def get_supported_formats(cls) -> List[str]:
-        """Return list of supported file formats."""
-        return SUPPORTED_EXTENSIONS
-
-    @classmethod
-    def is_success(cls, code: int) -> bool:
-        """Check if the provided status code indicates success."""
-        return code == 200
+    """Container for application-wide immutable settings."""
+    def __init__(self) -> None:
+        self.timeout: int = DEFAULT_TIMEOUT
+        self.retries: int = MAX_RETRIES
