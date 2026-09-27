@@ -1,39 +1,42 @@
-import logging
-from typing import Any, Optional, Union
+import functools
+import time
+from typing import Callable, Any, Dict
 
-logger = logging.getLogger(__name__)
+# Cache for computed expensive function results
+_memoization_cache: Dict[tuple, Any] = {}
 
-class DataProcessor:
-    """Handles data transformation with robust error recovery."""
+def memoize(func: Callable) -> Callable:
+    """Decorator for caching results of expensive operations."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _memoization_cache:
+            _memoization_cache[key] = func(*args, **kwargs)
+        return _memoization_cache[key]
+    return wrapper
 
-    def __init__(self, default_val: Any = None):
-        self.default_val = default_val
+def batch_process(data: list, chunk_size: int = 100) -> list:
+    """Generator for memory-efficient batch processing."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
-    def process_item(self, item: Any) -> Any:
-        try:
-            if item is None:
-                raise ValueError("Received null input")
-            
-            # Simulate standard operation
-            return str(item).strip()
-            
-        except (ValueError, TypeError) as e:
-            logger.error(f"Invalid input encountered: {e}")
-            return self.default_val
-        except Exception as e:
-            logger.critical(f"Unexpected system failure: {e}")
-            raise
+class PerformanceOptimizer:
+    """Utility class for execution time tracking."""
+    def __init__(self):
+        self.start_time = None
 
-    def batch_process(self, items: list) -> list:
-        """Process a list of items and handle potential batch failures."""
-        if not isinstance(items, list):
-            logger.warning("Batch process received non-list input")
-            return []
+    def __enter__(self):
+        self.start_time = time.perf_counter()
+        return self
 
-        results = []
-        for item in items:
-            try:
-                results.append(self.process_item(item))
-            except Exception:
-                results.append(self.default_val)
-        return results
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        elapsed = time.perf_counter() - self.start_time
+        print(f"Execution completed in {elapsed:.4f} seconds")
+
+@memoize
+def heavy_computation(n: int) -> int:
+    """Simulated intensive mathematical operation."""
+    result = 0
+    for i in range(n):
+        result += i * i
+    return result
