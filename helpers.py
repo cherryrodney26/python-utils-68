@@ -1,32 +1,32 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+import collections.abc
+from typing import Any, Dict, List, Union
 
-CACHE_TTL = 300
-_memoization_store: Dict[str, Dict[str, Any]] = {}
+def deep_flatten(items: Iterable[Any]) -> List[Any]:
+    """Flatten nested lists or tuples into a single list."""
+    result = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            result.extend(deep_flatten(item))
+        else:
+            result.append(item)
+    return result
 
-def memoize(func: Callable) -> Callable:
-    """Thread-safe cache decorator for expensive function calls."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-        now = time.time()
-        
-        if key in _memoization_store:
-            entry = _memoization_store[key]
-            if now - entry['timestamp'] < CACHE_TTL:
-                return entry['value']
-        
-        result = func(*args, **kwargs)
-        _memoization_store[key] = {'value': result, 'timestamp': now}
-        return result
-    return wrapper
+def safe_get(data: Dict[Any, Any], keys: List[str], default: Any = None) -> Any:
+    """Access nested dictionary values safely using a key path."""
+    current = data
+    try:
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return default
 
-def batch_process(items: list, batch_size: int = 100):
-    """Generator for efficient list chunking during bulk operations."""
-    for i in range(0, len(items), batch_size):
-        yield items[i:i + batch_size]
-
-def fast_flatten(nested_list: list) -> list:
-    """High-performance list flattening using list comprehension."""
-    return [item for sublist in nested_list for item in sublist]
+def merge_dicts(dict1: Dict[Any, Any], dict2: Dict[Any, Any]) -> Dict[Any, Any]:
+    """Recursively merge two dictionaries."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
