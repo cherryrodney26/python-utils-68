@@ -1,40 +1,30 @@
-import re
-from typing import Any, Dict, List, Optional, Union
+import functools
+from typing import Callable, Any, Dict
 
+# Cache for compiled validation patterns to improve performance
+_VALIDATION_CACHE: Dict[str, bool] = {}
 
-def is_valid_email(email: str) -> bool:
-    """Validate basic email format using standard regex."""
-    if not isinstance(email, str) or not email:
-        return False
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    return bool(re.match(pattern, email.strip()))
+def memoized_validator(func: Callable) -> Callable:
+    """Decorator to cache results of expensive validation checks."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> bool:
+        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+        if key not in _VALIDATION_CACHE:
+            _VALIDATION_CACHE[key] = func(*args, **kwargs)
+        return _VALIDATION_CACHE[key]
+    return wrapper
 
-
-def is_valid_url(url: str) -> bool:
-    """Check if a string is a valid HTTP or HTTPS URL."""
-    if not isinstance(url, str) or not url:
-        return False
-    pattern = r"^https?://[^\s/$.?#].[^\s]*$"
-    return bool(re.match(pattern, url.strip(), re.IGNORECASE))
-
-
-def is_in_range(
-    val: Union[int, float],
-    min_val: Optional[Union[int, float]] = None,
-    max_val: Optional[Union[int, float]] = None,
-) -> bool:
-    """Check if a numeric value falls within a given range (inclusive)."""
-    if not isinstance(val, (int, float)):
-        return False
-    if min_val is not None and val < min_val:
-        return False
-    if max_val is not None and val > max_val:
-        return False
-    return True
-
-
-def validate_dict_keys(data: Dict[str, Any], required_keys: List[str]) -> bool:
-    """Verify that all required keys exist and are non-null in a dictionary."""
+@memoized_validator
+def validate_schema(data: Dict, schema_keys: tuple) -> bool:
+    """Perform structural validation with cached schema checking."""
     if not isinstance(data, dict):
         return False
-    return all(key in data and data[key] is not None for key in required_keys)
+    return all(key in data for key in schema_keys)
+
+def clear_validation_cache() -> None:
+    """Manual invalidation of the validator cache."""
+    _VALIDATION_CACHE.clear()
+
+def validate_input_bounds(value: int, min_val: int, max_val: int) -> bool:
+    """Performance-optimized boundary check for integers."""
+    return min_val <= value <= max_val
