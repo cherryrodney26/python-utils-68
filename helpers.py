@@ -1,43 +1,32 @@
-from typing import Any, Dict, List, Sequence, TypeVar
+import functools
+import time
+from typing import Callable, Any, Dict
 
-T = TypeVar("T")
+CACHE_TTL = 300
+_memoization_store: Dict[str, Dict[str, Any]] = {}
 
+def memoize(func: Callable) -> Callable:
+    """Thread-safe cache decorator for expensive function calls."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+        now = time.time()
+        
+        if key in _memoization_store:
+            entry = _memoization_store[key]
+            if now - entry['timestamp'] < CACHE_TTL:
+                return entry['value']
+        
+        result = func(*args, **kwargs)
+        _memoization_store[key] = {'value': result, 'timestamp': now}
+        return result
+    return wrapper
 
-def chunk_list(items: Sequence[T], chunk_size: int) -> List[Sequence[T]]:
-    """Split a sequence into smaller chunks of a specified size."""
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be a positive integer")
-    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
+def batch_process(items: list, batch_size: int = 100):
+    """Generator for efficient list chunking during bulk operations."""
+    for i in range(0, len(items), batch_size):
+        yield items[i:i + batch_size]
 
-
-def safe_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    """Retrieve nested dictionary value using a dot-separated key path."""
-    keys = path.split(".")
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
-
-
-def flatten_dict(data: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
-    """Flatten a nested dictionary structure using dot notation keys."""
-    items: List[tuple] = []
-    for k, v in data.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-
-def truncate_string(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncate text to max_length appending suffix if shortened."""
-    if len(text) <= max_length:
-        return text
-    if max_length <= len(suffix):
-        return suffix[:max_length]
-    return text[: max_length - len(suffix)] + suffix
+def fast_flatten(nested_list: list) -> list:
+    """High-performance list flattening using list comprehension."""
+    return [item for sublist in nested_list for item in sublist]
