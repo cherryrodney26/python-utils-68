@@ -1,28 +1,30 @@
 import os
-from typing import Any, Dict, Optional
+import json
+from typing import Any, Dict
 
-class ConfigManager:
-    """Handles application settings from environment variables."""
-    def __init__(self, prefix: str = "APP_") -> None:
-        self.prefix = prefix
-        self._settings: Dict[str, Any] = {}
+def load_config(file_path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Loads configuration from a JSON file with provided defaults."""
+    config = defaults.copy()
 
-    def load(self) -> None:
-        """Populates settings dictionary from environment."""
-        for key, value in os.environ.items():
-            if key.startswith(self.prefix):
-                clean_key = key[len(self.prefix):].lower()
-                self._settings[clean_key] = value
+    if not os.path.exists(file_path):
+        return config
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieves a setting by key."""
-        return self._settings.get(key, default)
+    try:
+        with open(file_path, 'r') as f:
+            user_config = json.load(f)
+            if isinstance(user_config, dict):
+                config.update(user_config)
+    except (json.JSONDecodeError, IOError):
+        pass
 
-    @property
-    def all(self) -> Dict[str, Any]:
-        """Returns all loaded configurations."""
-        return self._settings.copy()
+    return config
 
-# Global instance for project-wide access
-config = ConfigManager()
-config.load()
+def get_env_variable(key: str, default: Any = None) -> Any:
+    """Fetches environment variable with fallback default value."""
+    return os.environ.get(key, default)
+
+# Example usage demonstration
+if __name__ == '__main__':
+    defaults = {'host': 'localhost', 'port': 8080, 'debug': False}
+    current_config = load_config('settings.json', defaults)
+    print(f'Active configuration: {current_config}')
