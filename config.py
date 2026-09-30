@@ -1,30 +1,38 @@
 import os
-import json
-from typing import Any, Dict
+from typing import Dict, Any, Optional
 
-def load_config(file_path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """Loads configuration from a JSON file with provided defaults."""
-    config = defaults.copy()
+class ConfigManager:
+    """Handles application settings from environment variables."""
 
-    if not os.path.exists(file_path):
-        return config
+    def __init__(self, prefix: str = "APP_") -> None:
+        self.prefix = prefix
+        self._settings: Dict[str, Any] = {}
+        self._load_from_env()
 
-    try:
-        with open(file_path, 'r') as f:
-            user_config = json.load(f)
-            if isinstance(user_config, dict):
-                config.update(user_config)
-    except (json.JSONDecodeError, IOError):
-        pass
+    def _load_from_env(self) -> None:
+        """Loads variables prefixed with the defined APP_ prefix."""
+        for key, value in os.environ.items():
+            if key.startswith(self.prefix):
+                clean_key = key[len(self.prefix):].lower()
+                self._settings[clean_key] = value
 
-    return config
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        """Retrieves a setting by key with a fallback default."""
+        return self._settings.get(key, default)
 
-def get_env_variable(key: str, default: Any = None) -> Any:
-    """Fetches environment variable with fallback default value."""
-    return os.environ.get(key, default)
+    def get_int(self, key: str, default: int = 0) -> int:
+        """Retrieves a setting as an integer."""
+        try:
+            return int(self.get(key, default))
+        except (ValueError, TypeError):
+            return default
 
-# Example usage demonstration
-if __name__ == '__main__':
-    defaults = {'host': 'localhost', 'port': 8080, 'debug': False}
-    current_config = load_config('settings.json', defaults)
-    print(f'Active configuration: {current_config}')
+    def all(self) -> Dict[str, Any]:
+        """Returns all loaded configuration settings."""
+        return self._settings.copy()
+
+def get_config() -> ConfigManager:
+    """Returns a singleton-like instance of the ConfigManager."""
+    if not hasattr(get_config, "_instance"):
+        get_config._instance = ConfigManager()
+    return get_config._instance
