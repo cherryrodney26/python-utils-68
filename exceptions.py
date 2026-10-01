@@ -1,35 +1,25 @@
-import logging
-from typing import Any, Optional
+class BaseUtilsError(Exception):
+    """Base exception for the python-utils-68 package."""
 
-logger = logging.getLogger(__name__)
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration settings are invalid."""
 
-class UtilityError(Exception):
-    """Base exception for python-utils-68 package."""
-    pass
+class ProcessingError(BaseUtilsError):
+    """Raised when data processing operations fail."""
 
-class ConfigurationError(UtilityError):
-    """Raised when config values are invalid or missing."""
-    pass
+class ValidationError(BaseUtilsError):
+    """Raised when data validation constraints are violated."""
 
-class ProcessingError(UtilityError):
-    """Raised when data transformation fails unexpectedly."""
-    pass
+class ResourceNotFoundError(BaseUtilsError):
+    """Raised when a requested resource is missing."""
 
-def handle_exception(exc: Exception, context: Optional[str] = None) -> None:
-    """
-    Centralized error logger for utility operations.
-    Logs the error with stack trace and optional context.
-    """
-    msg = f"Error occurred in {context}: " if context else "Error: "
-    logger.error(f"{msg}{str(exc)}", exc_info=True)
+def raise_error(exception_type: type[BaseUtilsError], message: str) -> None:
+    """Helper to raise standardized package exceptions."""
+    raise exception_type(message)
 
-def safe_execute(func: callable, *args: Any, **kwargs: Any) -> Any:
-    """
-    Wraps function execution with error handling.
-    Returns None if an exception is caught.
-    """
+if __name__ == "__main__":
+    # Example usage for verification
     try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        handle_exception(e, func.__name__)
-        return None
+        raise_error(ConfigurationError, "Missing mandatory config key")
+    except ConfigurationError as e:
+        print(f"Caught expected exception: {e}")
