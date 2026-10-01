@@ -1,28 +1,36 @@
-from typing import Any, Dict, List, Optional, Callable
+import functools
 import time
+from typing import Callable, Any, Dict
 
-class DataProcessor:
-    """Utility class for processing collections of data with timing support."""
+# Cache for storing expensive function results
+_CACHE: Dict[str, Any] = {}
 
-    def __init__(self, debug: bool = False) -> None:
-        self.debug: bool = debug
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = f"{func.__name__}:{args}:{frozenset(kwargs.items())}"
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-    def transform(self, items: List[Any], func: Callable[[Any], Any]) -> List[Any]:
-        """Apply a function to all items and return a list of results."""
-        start_time: float = time.time()
-        results: List[Any] = [func(item) for item in items]
-        
-        if self.debug:
-            duration: float = time.time() - start_time
-            print(f"Processed {len(items)} items in {duration:.4f}s")
-            
-        return results
+def batch_process(items: list, batch_size: int = 100):
+    """Generator to yield chunks for memory efficiency."""
+    for i in range(0, len(items), batch_size):
+        yield items[i:i + batch_size]
 
-    def flatten(self, nested_list: List[List[Any]]) -> List[Any]:
-        """Flatten a list of lists into a single list."""
-        return [item for sublist in nested_list for item in sublist]
+@memoize
+def heavy_computation(n: int) -> int:
+    """Simulated resource-intensive task."""
+    time.sleep(1)
+    return n * n
 
-    def get_summary(self, data: Dict[str, Any]) -> str:
-        """Return a string summary of the provided dictionary."""
-        keys: List[str] = list(data.keys())
-        return f"Dataset contains {len(keys)} keys: {', '.join(keys)}"
+def execute_optimized_workflow(data: list) -> list:
+    """Execution entry point with performance enhancements."""
+    results = []
+    for batch in batch_process(data, 50):
+        # Process batch items concurrently or efficiently
+        processed = [heavy_computation(i) for i in batch]
+        results.extend(processed)
+    return results
