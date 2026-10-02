@@ -1,25 +1,30 @@
-class BaseUtilsError(Exception):
-    """Base exception for the python-utils-68 package."""
+class BaseUtilityError(Exception):
+    """Base exception for python-utils-68 operations."""
+    pass
 
-class ConfigurationError(BaseUtilsError):
-    """Raised when configuration settings are invalid."""
+class ConfigurationError(BaseUtilityError):
+    """Raised when configuration values are invalid or missing."""
+    pass
 
-class ProcessingError(BaseUtilsError):
-    """Raised when data processing operations fail."""
+class ProcessingError(BaseUtilityError):
+    """Raised when a data transformation task fails."""
+    pass
 
-class ValidationError(BaseUtilsError):
-    """Raised when data validation constraints are violated."""
+def raise_if_none(value, message: str):
+    """Check if value is None and raise configuration error."""
+    if value is None:
+        raise ConfigurationError(message)
+    return value
 
-class ResourceNotFoundError(BaseUtilsError):
-    """Raised when a requested resource is missing."""
+def handle_execution(func):
+    """Decorator for catching and wrapping processing exceptions."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            raise ProcessingError(f"Task failed: {str(e)}") from e
+    return wrapper
 
-def raise_error(exception_type: type[BaseUtilsError], message: str) -> None:
-    """Helper to raise standardized package exceptions."""
-    raise exception_type(message)
-
-if __name__ == "__main__":
-    # Example usage for verification
-    try:
-        raise_error(ConfigurationError, "Missing mandatory config key")
-    except ConfigurationError as e:
-        print(f"Caught expected exception: {e}")
+class ValidationError(BaseUtilityError):
+    """Raised during schema or input validation failures."""
+    pass
