@@ -1,33 +1,34 @@
 from typing import Final, Dict, Any
 
-# Configuration settings for system components
-DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 3
+# Configuration settings for general data operations
+DEFAULT_ENCODING: Final[str] = 'utf-8'
+CHUNK_SIZE: Final[int] = 1024 * 64
 
-# Standard HTTP status mapping for internal services
-STATUS_CODES: Final[Dict[str, int]] = {
-    "SUCCESS": 200,
-    "CREATED": 201,
-    "BAD_REQUEST": 400,
-    "UNAUTHORIZED": 401,
-    "NOT_FOUND": 404,
-    "SERVER_ERROR": 500
+# HTTP status code mappings for data handlers
+STATUS_SUCCESS: Final[int] = 200
+STATUS_BAD_REQUEST: Final[int] = 400
+STATUS_NOT_FOUND: Final[int] = 404
+STATUS_SERVER_ERROR: Final[int] = 500
+
+# Common MIME types for data processing
+CONTENT_TYPES: Final[Dict[str, str]] = {
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'txt': 'text/plain',
+    'xml': 'application/xml'
 }
 
-# Global application configuration defaults
-APP_CONFIG: Final[Dict[str, Any]] = {
-    "version": "1.0.0",
-    "environment": "production",
-    "debug_mode": False
-}
+# Logging format constants
+LOG_DATE_FORMAT: Final[str] = '%Y-%m-%d %H:%M:%S'
+LOG_TEMPLATE: Final[str] = '[%(levelname)s] %(asctime)s - %(message)s'
 
-def get_status_message(code: int) -> str:
-    """Return a descriptive message for a given status code."""
-    mapping: Dict[int, str] = {v: k for k, v in STATUS_CODES.items()}
-    return mapping.get(code, "UNKNOWN_STATUS")
+# Validation constraints for data schemas
+MAX_RECURSION_DEPTH: Final[int] = 10
+SUPPORTED_VERSIONS: Final[list] = ['v1', 'v2']
 
-class AppConstants:
-    """Container for application-wide immutable settings."""
-    def __init__(self) -> None:
-        self.timeout: int = DEFAULT_TIMEOUT
-        self.retries: int = MAX_RETRIES
+def get_default_headers() -> Dict[str, str]:
+    """Returns standard header configuration for data requests."""
+    return {
+        'Content-Type': CONTENT_TYPES['json'],
+        'Accept-Encoding': DEFAULT_ENCODING
+    }
