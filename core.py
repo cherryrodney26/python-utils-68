@@ -1,36 +1,32 @@
 import functools
-import time
-from typing import Callable, Any, Dict
+import logging
 
-# Cache for storing expensive function results
-_CACHE: Dict[str, Any] = {}
+# internal cache for performance optimization
+_cache = {}
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = f"{func.__name__}:{args}:{frozenset(kwargs.items())}"
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+class DataProcessor:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
 
-def batch_process(items: list, batch_size: int = 100):
-    """Generator to yield chunks for memory efficiency."""
-    for i in range(0, len(items), batch_size):
-        yield items[i:i + batch_size]
+    @staticmethod
+    @functools.lru_cache(maxsize=1024)
+    def process_item(item_id: int) -> dict:
+        """computes heavy data transformation with lru caching"""
+        # simulate resource intensive operation
+        result = {"id": item_id, "data": [i * 2 for i in range(1000)]}
+        return result
 
-@memoize
-def heavy_computation(n: int) -> int:
-    """Simulated resource-intensive task."""
-    time.sleep(1)
-    return n * n
+    def batch_process(self, item_ids: list) -> list:
+        """efficient processing using list comprehension and cache"""
+        return [self.process_item(i) for i in item_ids]
 
-def execute_optimized_workflow(data: list) -> list:
-    """Execution entry point with performance enhancements."""
-    results = []
-    for batch in batch_process(data, 50):
-        # Process batch items concurrently or efficiently
-        processed = [heavy_computation(i) for i in batch]
-        results.extend(processed)
-    return results
+    def clear_cache(self):
+        """manual memory management for internal caches"""
+        self.process_item.cache_clear()
+        self.logger.info("core module cache cleared")
+
+def get_instance():
+    """singleton pattern for data processor"""
+    if not hasattr(get_instance, "_instance"):
+        get_instance._instance = DataProcessor()
+    return get_instance._instance
