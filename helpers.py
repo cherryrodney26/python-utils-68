@@ -1,32 +1,54 @@
-from typing import Any, Dict, List, Optional
+import time
+from functools import wraps
+from typing import Any, Callable, Dict, TypeVar
 
-def deep_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    """Retrieve nested values from dictionaries using dot notation."""
-    keys = path.split('.')
-    current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError, AttributeError):
-        return default
+T = TypeVar("T")
 
-def sanitize_dict(data: Dict[str, Any], keys_to_remove: List[str]) -> Dict[str, Any]:
-    """Remove sensitive or unwanted keys from a dictionary."""
-    return {k: v for k, v in data.items() if k not in keys_to_remove}
 
-def flatten_list(nested_list: List[Any]) -> List[Any]:
-    """Convert nested lists into a single flat list."""
-    flattened = []
-    for item in nested_list:
-        if isinstance(item, list):
-            flattened.extend(flatten_list(item))
+def deep_merge(dict_a: Dict[str, Any], dict_b: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merges two dictionaries.
+
+    If keys conflict and both values are dictionaries, they are merged.
+    Otherwise, the value from the second dictionary overwrites the first.
+    """
+    result = dict_a.copy()
+    for key, value in dict_b.items():
+        if (
+            key in result
+            and isinstance(result[key], dict)
+            and isinstance(value, dict)
+        ):
+            result[key] = deep_merge(result[key], value)
         else:
-            flattened.append(item)
-    return flattened
+            result[key] = value
+    return result
 
-def chunk_iterable(items: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of specific size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    return [items[i:i + size] for i in range(0, len(items), size)]
+
+def retry_on_exception(
+    retries: int = 3, delay: float = 1.0
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Decorator that retries a function execution upon encountering an exception.
+
+    Args:
+        retries: The number of times to retry the operation before raising.
+        delay: The sleep interval in seconds between retry attempts.
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            last_exception = None
+            for attempt in range(retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < retries:
+                        time.sleep(delay)
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("Retry failed without captured exception")
+
+        return wrapper
+
+    return decorator
