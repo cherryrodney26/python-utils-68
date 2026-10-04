@@ -1,38 +1,36 @@
+import json
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
-class ConfigManager:
-    """Handles application settings from environment variables."""
+class ConfigLoader:
+    """Handles configuration loading from JSON files with defaults."""
 
-    def __init__(self, prefix: str = "APP_") -> None:
-        self.prefix = prefix
-        self._settings: Dict[str, Any] = {}
-        self._load_from_env()
+    def __init__(self, default_config: Dict[str, Any]):
+        self.config = default_config
 
-    def _load_from_env(self) -> None:
-        """Loads variables prefixed with the defined APP_ prefix."""
-        for key, value in os.environ.items():
-            if key.startswith(self.prefix):
-                clean_key = key[len(self.prefix):].lower()
-                self._settings[clean_key] = value
+    def load_from_file(self, filepath: str) -> None:
+        """Updates config dictionary with values from a JSON file."""
+        if not os.path.exists(filepath):
+            return
 
-    def get(self, key: str, default: Optional[Any] = None) -> Any:
-        """Retrieves a setting by key with a fallback default."""
-        return self._settings.get(key, default)
-
-    def get_int(self, key: str, default: int = 0) -> int:
-        """Retrieves a setting as an integer."""
         try:
-            return int(self.get(key, default))
-        except (ValueError, TypeError):
-            return default
+            with open(filepath, 'r') as f:
+                file_data = json.load(f)
+                self.config.update(file_data)
+        except (json.JSONDecodeError, IOError):
+            pass
 
-    def all(self) -> Dict[str, Any]:
-        """Returns all loaded configuration settings."""
-        return self._settings.copy()
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieves a configuration value by key."""
+        return self.config.get(key, default)
 
-def get_config() -> ConfigManager:
-    """Returns a singleton-like instance of the ConfigManager."""
-    if not hasattr(get_config, "_instance"):
-        get_config._instance = ConfigManager()
-    return get_config._instance
+    def set(self, key: str, value: Any) -> None:
+        """Sets a configuration value."""
+        self.config[key] = value
+
+def create_config(defaults: Dict[str, Any], path: str = None) -> ConfigLoader:
+    """Factory function for standardized config initialization."""
+    loader = ConfigLoader(defaults)
+    if path:
+        loader.load_from_file(path)
+    return loader
