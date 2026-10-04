@@ -1,34 +1,30 @@
-from typing import Final, Dict, Any
+import os
 
-# Configuration settings for general data operations
-DEFAULT_ENCODING: Final[str] = 'utf-8'
-CHUNK_SIZE: Final[int] = 1024 * 64
+# Application default settings and constants
 
-# HTTP status code mappings for data handlers
-STATUS_SUCCESS: Final[int] = 200
-STATUS_BAD_REQUEST: Final[int] = 400
-STATUS_NOT_FOUND: Final[int] = 404
-STATUS_SERVER_ERROR: Final[int] = 500
+APP_NAME = "python-utils-68"
+VERSION = "1.0.0"
 
-# Common MIME types for data processing
-CONTENT_TYPES: Final[Dict[str, str]] = {
-    'json': 'application/json',
-    'csv': 'text/csv',
-    'txt': 'text/plain',
-    'xml': 'application/xml'
-}
+# Directory and Path defaults
+DEFAULT_LOG_DIR = os.getenv("LOG_DIR", "logs")
+DEFAULT_TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/utils_cache")
 
-# Logging format constants
-LOG_DATE_FORMAT: Final[str] = '%Y-%m-%d %H:%M:%S'
-LOG_TEMPLATE: Final[str] = '[%(levelname)s] %(asctime)s - %(message)s'
+# Validation thresholds
+MAX_RETRY_ATTEMPTS = 3
+TIMEOUT_SECONDS = 30
 
-# Validation constraints for data schemas
-MAX_RECURSION_DEPTH: Final[int] = 10
-SUPPORTED_VERSIONS: Final[list] = ['v1', 'v2']
+# Common status codes
+STATUS_SUCCESS = 0
+STATUS_FAILURE = 1
+STATUS_WARNING = 2
 
-def get_default_headers() -> Dict[str, str]:
-    """Returns standard header configuration for data requests."""
-    return {
-        'Content-Type': CONTENT_TYPES['json'],
-        'Accept-Encoding': DEFAULT_ENCODING
-    }
+# File handling configurations
+ALLOWED_EXTENSIONS = {".txt", ".json", ".csv", ".yaml"}
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB limit
+
+# Time formatting
+ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DEFAULT_ENCODING = "utf-8"
+
+# Environment checks
+IS_PRODUCTION = os.getenv("ENV", "development").lower() == "production"
