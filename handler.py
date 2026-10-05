@@ -1,35 +1,36 @@
 from typing import Any, Dict, Optional, Callable
-import logging
 
-logger = logging.getLogger(__name__)
+class RequestHandler:
+    """Handles incoming request processing and lifecycle management."""
 
-class DataHandler:
-    """Utility class for processing structured data streams."""
+    def __init__(self, timeout: int = 30) -> None:
+        """Initialize handler with a specific timeout duration."""
+        self.timeout: int = timeout
+        self.hooks: Dict[str, Callable[[Any], None]] = {}
 
-    def __init__(self, callback: Optional[Callable[[Any], None]] = None) -> None:
-        self.callback = callback
-        self.registry: Dict[str, Any] = {}
+    def register_hook(self, name: str, callback: Callable[[Any], None]) -> None:
+        """Register a callback function for a specific lifecycle event."""
+        self.hooks[name] = callback
 
-    def register(self, key: str, value: Any) -> None:
-        """Stores data in the internal registry."""
-        self.registry[key] = value
-
-    def process(self, key: str) -> Optional[Any]:
-        """Retrieves and processes registered data by key."""
-        data = self.registry.get(key)
-        if data is None:
-            logger.warning(f"No data found for key: {key}")
+    def process(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Execute processing logic for provided data dictionary."""
+        if not data:
             return None
 
-        if self.callback:
-            self.callback(data)
+        if "pre_process" in self.hooks:
+            self.hooks["pre_process"](data)
 
-        return data
+        result: Dict[str, Any] = {
+            "status": "success",
+            "processed": True,
+            "payload": data
+        }
 
-    def clear_registry(self) -> None:
-        """Resets the internal storage to empty state."""
-        self.registry.clear()
+        if "post_process" in self.hooks:
+            self.hooks["post_process"](result)
 
-    def get_count(self) -> int:
-        """Returns the current count of registry items."""
-        return len(self.registry)
+        return result
+
+    def get_config(self) -> Dict[str, int]:
+        """Retrieve current handler configuration parameters."""
+        return {"timeout": self.timeout}
