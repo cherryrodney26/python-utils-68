@@ -1,30 +1,60 @@
-import functools
-from typing import Callable, Any, Dict
+"""Input validation utilities for record processing pipelines."""
 
-# Cache for compiled validation patterns to improve performance
-_VALIDATION_CACHE: Dict[str, bool] = {}
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-def memoized_validator(func: Callable) -> Callable:
-    """Decorator to cache results of expensive validation checks."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> bool:
-        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-        if key not in _VALIDATION_CACHE:
-            _VALIDATION_CACHE[key] = func(*args, **kwargs)
-        return _VALIDATION_CACHE[key]
-    return wrapper
 
-@memoized_validator
-def validate_schema(data: Dict, schema_keys: tuple) -> bool:
-    """Perform structural validation with cached schema checking."""
-    if not isinstance(data, dict):
-        return False
-    return all(key in data for key in schema_keys)
+class ValidationError(Exception):
+    """Raised when input validation fails."""
+    pass
 
-def clear_validation_cache() -> None:
-    """Manual invalidation of the validator cache."""
-    _VALIDATION_CACHE.clear()
 
-def validate_input_bounds(value: int, min_val: int, max_val: int) -> bool:
-    """Performance-optimized boundary check for integers."""
-    return min_val <= value <= max_val
+def validate_record(
+    record: Dict[str, Any],
+    schema: Dict[str, Tuple[type, bool, Optional[Callable[[Any], bool]]]],
+) -> Dict[str, Any]:
+    """Validate a single record against schema rules.
+    
+    Schema format: {field_name: (expected_type, required, optional_validator_func)}
+    """
+    if not isinstance(record, dict):
+        raise ValidationError(f"Expected dict record, got {type(record).__name__}")
+
+    validated = {}
+    for field, rules in schema.items():
+        expected_type, required, custom_validator = rules
+        
+        if field not in record or record[field] is None:
+            if required:
+                raise ValidationError(f"Missing required field: '{field}'")
+            validated[field] = None
+            continue
+            
+        val = record[field]
+        if not isinstance(val, expected_type):
+            raise ValidationError(
+                f"Field '{field}' must be of type {expected_type.__name__}, got {type(val).__name__}"
+            )
+            
+        if custom_validator and not custom_validator(val):
+            raise ValidationError(f"Field '{field}' failed custom validation with value: {val}")
+            
+        validated[field] = val
+        
+    return validated
+
+
+def process_and_validate_batch(
+    items: List[Dict[str, Any]],
+    schema: Dict[str, Tuple[type, bool, Optional[Callable[[Any], bool]]]],
+    skip_invalid: bool = False,
+) -> List[Dict[str, Any]]:
+    """Validate a batch of input records within a processing loop."""
+    valid_records = []
+    for index, item in enumerate(items):
+        try:
+            clean_item = validate_record(item, schema)
+            valid_records.append(clean_item)
+        except ValidationError as err:
+            if not skip_invalid:
+                raise ValidationError(f"Batch item at index {index} failed: {err}") from err
+    return valid_records
