@@ -1,54 +1,33 @@
-import time
-from functools import wraps
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Dict, List, Optional
+from collections.abc import Mapping
 
-T = TypeVar("T")
-
-
-def deep_merge(dict_a: Dict[str, Any], dict_b: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merges two dictionaries.
-
-    If keys conflict and both values are dictionaries, they are merged.
-    Otherwise, the value from the second dictionary overwrites the first.
-    """
-    result = dict_a.copy()
-    for key, value in dict_b.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
-            result[key] = deep_merge(result[key], value)
+def flatten_dict(data: Mapping, parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten a nested dictionary into a single level."""
+    items = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, Mapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
-            result[key] = value
-    return result
+            items.append((new_key, v))
+    return dict(items)
 
+def filter_none_values(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove keys with None values from a dictionary."""
+    return {k: v for k, v in data.items() if v is not None}
 
-def retry_on_exception(
-    retries: int = 3, delay: float = 1.0
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator that retries a function execution upon encountering an exception.
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """Split a list into smaller chunks of specified size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be a positive integer")
+    return [data[i:i + size] for i in range(0, len(data), size)]
 
-    Args:
-        retries: The number of times to retry the operation before raising.
-        delay: The sleep interval in seconds between retry attempts.
-    """
-
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_exception = None
-            for attempt in range(retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    if attempt < retries:
-                        time.sleep(delay)
-            if last_exception is not None:
-                raise last_exception
-            raise RuntimeError("Retry failed without captured exception")
-
-        return wrapper
-
-    return decorator
+def safe_get(data: Mapping, keys: List[str], default: Any = None) -> Any:
+    """Access nested dictionary values safely using a key list."""
+    current = data
+    try:
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return default
