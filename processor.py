@@ -1,36 +1,38 @@
-import json
-from typing import Any, Dict, List, Optional
+import logging
 
-def clean_data(data: Any, default: Any = None) -> Any:
-    """
-    Recursively cleans input data to handle None values or empty strings.
-    Returns a sanitized version of the provided input structure.
-    """
-    if isinstance(data, dict):
-        return {k: clean_data(v, default) for k, v in data.items() if v is not None}
-    elif isinstance(data, list):
-        return [clean_data(item, default) for item in data if item is not None]
-    return data if data is not None else default
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def batch_process(items: List[Dict], key: str, transform_func) -> List[Any]:
-    """
-    Applies a transformation function to specific keys in a list of dictionaries.
-    Returns a list of transformed values, skipping missing keys.
-    """
-    results = []
-    for item in items:
-        if key in item:
-            try:
-                results.append(transform_func(item[key]))
-            except (ValueError, TypeError):
-                continue
-    return results
+def validate_input(data):
+    """Ensures input data contains required fields and valid types."""
+    if not isinstance(data, dict):
+        return False, "Input must be a dictionary"
+    if 'id' not in data or not isinstance(data.get('id'), int):
+        return False, "Field 'id' missing or invalid type"
+    if 'payload' not in data or not isinstance(data.get('payload'), str):
+        return False, "Field 'payload' missing or invalid type"
+    return True, None
 
-def serialize_json(data: Any, indent: int = 4) -> str:
-    """
-    Safe serialization of complex objects into JSON strings.
-    """
-    try:
-        return json.dumps(data, indent=indent, default=str)
-    except (TypeError, ValueError):
-        return json.dumps({"error": "serialization failed"})
+def process_stream(data_stream):
+    """Main processing loop with input validation."""
+    for item in data_stream:
+        is_valid, error = validate_input(item)
+        
+        if not is_valid:
+            logger.error(f"Validation failed: {error} for item: {item}")
+            continue
+            
+        try:
+            result = item['payload'].upper()
+            logger.info(f"Processed item {item['id']}: {result}")
+        except Exception as e:
+            logger.error(f"Unexpected error processing item {item.get('id')}: {e}")
+
+if __name__ == '__main__':
+    sample_data = [
+        {'id': 1, 'payload': 'hello world'},
+        {'id': 'two', 'payload': 'invalid id'},
+        {'id': 3, 'payload': 'valid entry'},
+        {'invalid': 'structure'}
+    ]
+    process_stream(sample_data)
