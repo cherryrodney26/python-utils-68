@@ -1,31 +1,28 @@
-import json
-import os
-from typing import Any, Dict, Optional
+import time
+import functools
+import logging
+from typing import Callable, Any
 
-def load_data(filepath: str) -> Optional[Dict[str, Any]]:
-    """Load and parse JSON data from a file."""
-    if not os.path.exists(filepath):
-        return None
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
+logger = logging.getLogger(__name__)
 
-def save_data(filepath: str, data: Dict[str, Any]) -> bool:
-    """Save dictionary to a JSON file."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except (TypeError, IOError):
-        return False
-
-def sanitize_input(data: Any) -> Any:
-    """Remove null values from dictionary or list."""
-    if isinstance(data, dict):
-        return {k: sanitize_input(v) for k, v in data.items() if v is not None}
-    elif isinstance(data, list):
-        return [sanitize_input(i) for i in data if i is not None]
-    return data
+def retry_network_op(retries: int = 3, delay: float = 1.0, backoff: int = 2):
+    """Decorator to retry network functions with exponential backoff."""
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            current_delay = delay
+            last_exception = None
+            
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            
+            logger.error(f"All {retries} retries exhausted for {func.__name__}.")
+            raise last_exception
+        return wrapper
+    return decorator
