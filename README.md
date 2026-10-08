@@ -1,45 +1,47 @@
 # python-utils-68
 
-A collection of lightweight, high-performance utility functions designed to streamline repetitive Python development tasks. This library focuses on simplifying data manipulation, file system operations, and system logging for production-ready applications.
+A lightweight collection of robust, production-ready Python helper functions designed to streamline repetitive coding tasks. This utility suite focuses on performance, type safety, and minimizing boilerplate across diverse data processing workflows.
 
 ## Features
 
-*   **Robust File Operations:** Advanced directory traversal and recursive file processing tools with built-in error handling.
-*   **Performance Decorators:** A suite of timing and memoization decorators to profile and optimize CPU-intensive functions.
-*   **Data Validation:** Simplified schema validation tools for dictionaries and environment configuration objects.
-*   **Smart Logging:** Configurable logging helpers that automate file rotation and color-coded console output.
+*   **FileSystem Streamliner:** Simplify directory traversal and file manipulation with atomic path operations and recursive pattern matching.
+*   **Dict-Object Mapper:** Seamlessly convert nested dictionaries to attribute-access objects for cleaner configuration management.
+*   **Performance Decorators:** Built-in tools for easy execution timing, memoization, and retry logic with exponential backoff.
+*   **String Sanitizer:** Efficient text normalization tools to strip whitespace, clean Unicode artifacts, and validate input formats.
 
 ## Installation
 
-Install the package directly via pip:
+Install `python-utils-68` directly via pip:
 
 ```bash
 pip install python-utils-68
 ```
 
-Alternatively, include it in your `requirements.txt`:
+Alternatively, if you are cloning the repository:
 
-```text
-python-utils-68>=1.0.0
+```bash
+git clone https://github.com/Developer/python-utils-68.git
+cd python-utils-68
+pip install -r requirements.txt
 ```
 
 ## Basic Usage
 
-Import the utility modules to handle common tasks with minimal boilerplate code.
+Integrate utility modules into your existing scripts with minimal overhead:
 
 ```python
-from pyutils68 import timer, file_manager
+from pyutils68 import timers, sanitizers
 
-# Measure execution time of any function
-@timer
+# Measure function performance automatically
+@timers.measure_execution_time
 def process_data(data):
-    # Perform intensive operations
-    return [d * 2 for d in data]
+    return [sanitizers.normalize_text(i) for i in data]
 
-# Recursively clean up temp files in a directory
-file_manager.delete_by_extension('./cache', '.tmp')
+data = ["  Hello World! ", "  Python-Utils-68 "]
+clean_data = process_data(data)
 
-process_data([1, 2, 3, 4])
+print(clean_data)
+# Output: ['Hello World!', 'Python-Utils-68']
 ```
 
 ## License
