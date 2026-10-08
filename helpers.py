@@ -1,33 +1,57 @@
-from typing import Any, Dict, List, Optional
-from collections.abc import Mapping
+from typing import Any, Dict, Generator, Iterable, List, Union
 
-def flatten_dict(data: Mapping, parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flatten a nested dictionary into a single level."""
-    items = []
-    for k, v in data.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, Mapping):
+
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Recursively flatten a nested dictionary into single-level keys."""
+    items: List[tuple] = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
+        if isinstance(v, dict):
             items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))
     return dict(items)
 
-def filter_none_values(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove keys with None values from a dictionary."""
-    return {k: v for k, v in data.items() if v is not None}
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be a positive integer")
-    return [data[i:i + size] for i in range(0, len(data), size)]
-
-def safe_get(data: Mapping, keys: List[str], default: Any = None) -> Any:
-    """Access nested dictionary values safely using a key list."""
+def safe_get(
+    data: Union[Dict, List], path: str, default: Any = None, sep: str = "."
+) -> Any:
+    """Retrieve nested values from dicts/lists using a separated path string."""
+    keys = path.split(sep)
     current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return default
+
+    for key in keys:
+        if isinstance(current, dict):
+            current = current.get(key, default)
+        elif isinstance(current, list) and key.isdigit():
+            idx = int(key)
+            if 0 <= idx < len(current):
+                current = current[idx]
+            else:
+                return default
+        else:
+            return default
+
+        if current is default:
+            break
+
+    return current
+
+
+def chunk_iterable(
+    iterable: Iterable[Any], chunk_size: int
+) -> Generator[List[Any], None, None]:
+    """Yield successive chunks of specified size from an iterable."""
+    if chunk_size < 1:
+        raise ValueError("chunk_size must be at least 1")
+
+    chunk: List[Any] = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
