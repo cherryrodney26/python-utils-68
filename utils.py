@@ -1,31 +1,30 @@
+import time
+import functools
 import logging
 
-def validate_input(data):
-    """Ensures input data conforms to expected schema."""
-    if not isinstance(data, dict):
-        raise ValueError("Input must be a dictionary")
-    if "id" not in data or not isinstance(data["id"], int):
-        raise ValueError("Missing or invalid integer 'id'")
-    return True
+logger = logging.getLogger(__name__)
 
-def process_items(items):
-    """Main processing loop with integrated input validation."""
-    results = []
-    for item in items:
-        try:
-            if validate_input(item):
-                # Simulate core processing logic
-                processed = {
-                    "id": item["id"],
-                    "status": "processed",
-                    "value": item.get("value", 0) * 2
-                }
-                results.append(processed)
-        except (ValueError, TypeError) as e:
-            logging.error(f"Skipping invalid item {item}: {e}")
-            continue
-    return results
+def retry_network_operation(max_retries=3, delay=1.0, backoff=2.0):
+    """Decorator for retrying network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Final attempt {max_retries} failed: {e}")
+                        raise
+                    
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-if __name__ == "__main__":
-    data_stream = [{"id": 1, "value": 10}, {"invalid": True}, {"id": 2, "value": 5}]
-    print(process_items(data_stream))
+# Example usage:
+# @retry_network_operation(max_retries=3, delay=2)
+# def fetch_data(url):
+#     pass
