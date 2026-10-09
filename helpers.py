@@ -1,57 +1,32 @@
-from typing import Any, Dict, Generator, Iterable, List, Union
+import functools
+import time
+from typing import Callable, Any, Dict
 
+# Cache for storing expensive function results
+_CACHE: Dict[tuple, Any] = {}
 
-def flatten_dict(
-    d: Dict[str, Any], parent_key: str = "", sep: str = "."
-) -> Dict[str, Any]:
-    """Recursively flatten a nested dictionary into single-level keys."""
-    items: List[tuple] = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def memoize(func: Callable) -> Callable:
+    """Decorator for caching function return values to improve execution speed."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, tuple(sorted(kwargs.items())))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
+def batch_process(items: list, chunk_size: int = 100):
+    """Generator for memory-efficient iteration over large datasets."""
+    for i in range(0, len(items), chunk_size):
+        yield items[i:i + chunk_size]
 
-def safe_get(
-    data: Union[Dict, List], path: str, default: Any = None, sep: str = "."
-) -> Any:
-    """Retrieve nested values from dicts/lists using a separated path string."""
-    keys = path.split(sep)
-    current = data
-
-    for key in keys:
-        if isinstance(current, dict):
-            current = current.get(key, default)
-        elif isinstance(current, list) and key.isdigit():
-            idx = int(key)
-            if 0 <= idx < len(current):
-                current = current[idx]
-            else:
-                return default
-        else:
-            return default
-
-        if current is default:
-            break
-
-    return current
-
-
-def chunk_iterable(
-    iterable: Iterable[Any], chunk_size: int
-) -> Generator[List[Any], None, None]:
-    """Yield successive chunks of specified size from an iterable."""
-    if chunk_size < 1:
-        raise ValueError("chunk_size must be at least 1")
-
-    chunk: List[Any] = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == chunk_size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
+def timed_execution(func: Callable) -> Callable:
+    """Performance monitoring wrapper for core module analysis."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start
+        print(f"Execution of {func.__name__} took {duration:.4f}s")
+        return result
+    return wrapper
