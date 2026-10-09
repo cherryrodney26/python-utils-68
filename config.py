@@ -1,45 +1,32 @@
 import os
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Optional
 
-T = TypeVar("T")
+class ConfigLoader:
+    """Handles loading and retrieval of environment-based configuration settings."""
 
+    def __init__(self, prefix: str = "APP_") -> None:
+        """Initialize with an environment variable prefix."""
+        self.prefix: str = prefix
+        self._settings: Dict[str, Any] = {}
 
-class Config:
-    """A flexible configuration manager with environment variable overrides."""
+    def load_from_env(self) -> None:
+        """Populate settings dictionary from environment variables."""
+        for key, value in os.environ.items():
+            if key.startswith(self.prefix):
+                config_key = key[len(self.prefix):].lower()
+                self._settings[config_key] = value
 
-    def __init__(self, defaults: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize the configuration with optional default values."""
-        self._config: Dict[str, Any] = defaults or {}
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        """Retrieve a configuration value with an optional default."""
+        return self._settings.get(key, default)
 
-    def get(
-        self, key: str, default: Optional[T] = None, cast_to: Optional[Type[T]] = None
-    ) -> Union[Any, T, None]:
-        """Retrieve a configuration value by key, checking env variables first.
-
-        Args:
-            key: The configuration key to retrieve.
-            default: The default value to return if not found.
-            cast_to: Optional type to cast the resulting value.
-
-        Returns:
-            The configured value, cast to the desired type, or default.
-        """
-        env_key = key.upper()
-        value = os.environ.get(env_key, self._config.get(key, default))
-
-        if value is None:
+    def get_int(self, key: str, default: int = 0) -> int:
+        """Retrieve a configuration value cast to integer."""
+        try:
+            return int(self._settings.get(key, default))
+        except (ValueError, TypeError):
             return default
 
-        if cast_to is not None:
-            try:
-                if cast_to is bool:
-                    return str(value).lower() in ("true", "1", "yes", "on")  # type: ignore
-                return cast_to(value)
-            except (ValueError, TypeError):
-                return default
-
-        return value
-
-    def set(self, key: str, value: Any) -> None:
-        """Set a configuration value dynamically."""
-        self._config[key] = value
+    def all(self) -> Dict[str, Any]:
+        """Return a copy of the full configuration dictionary."""
+        return self._settings.copy()
