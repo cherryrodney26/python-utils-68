@@ -1,30 +1,40 @@
-import time
-import functools
-import logging
+from typing import Any, Dict, Generator, List, Optional, Sequence
 
-logger = logging.getLogger(__name__)
 
-def retry_network_operation(max_retries=3, delay=1.0, backoff=2.0):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    if attempt == max_retries - 1:
-                        logger.error(f"Final attempt {max_retries} failed: {e}")
-                        raise
-                    
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def safe_get(data: Dict[str, Any], path: str, default: Optional[Any] = None) -> Any:
+    """Retrieve nested dictionary value using a dot-separated key path."""
+    keys = path.split(".")
+    current = data
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+    return current
 
-# Example usage:
-# @retry_network_operation(max_retries=3, delay=2)
-# def fetch_data(url):
-#     pass
+
+def deep_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two dictionaries into a single updated dictionary."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def chunk_iterable(items: Sequence[Any], chunk_size: int) -> Generator[List[Any], None, None]:
+    """Yield successive chunks of specified size from a sequence."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be a positive integer")
+    for i in range(0, len(items), chunk_size):
+        yield list(items[i : i + chunk_size])
+
+
+def truncate_string(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate string to max_length including suffix if truncated."""
+    if len(text) <= max_length:
+        return text
+    if max_length < len(suffix):
+        return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
