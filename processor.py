@@ -1,32 +1,29 @@
-import time
-import functools
-import logging
+import json
+import os
+from typing import Any, Dict, List, Optional
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def read_json_file(file_path: str) -> Dict[str, Any]:
+    """Parses a JSON file into a dictionary."""
+    if not os.path.exists(file_path):
+        return {}
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def retry(max_attempts=3, delay=1, backoff=2, exceptions=(Exception,)):
-    """Decorator for retrying functions on specific exceptions."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == max_attempts:
-                        logger.error(f"Final attempt {attempt} failed: {e}")
-                        raise
-                    logger.warning(f"Attempt {attempt} failed. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """Splits a list into smaller sub-lists of a fixed size."""
+    return [data[i:i + size] for i in range(0, len(data), size)]
 
-@retry(max_attempts=3, delay=2, exceptions=(ConnectionError, TimeoutError))
-def fetch_network_resource(url):
-    """Simulated network operation requiring retry logic."""
-    logger.info(f"Fetching from {url}")
-    # Simulate network instability
-    raise ConnectionError("Server unreachable")
+def sanitize_string(value: Any) -> str:
+    """Converts input to a stripped string safely."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+def get_nested_value(data: Dict, keys: List[str], default: Any = None) -> Any:
+    """Traverses dictionary with a list of keys."""
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key, default)
+        else:
+            return default
+    return data
