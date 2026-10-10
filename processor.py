@@ -1,38 +1,32 @@
+import time
+import functools
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_input(data):
-    """Ensures input data contains required fields and valid types."""
-    if not isinstance(data, dict):
-        return False, "Input must be a dictionary"
-    if 'id' not in data or not isinstance(data.get('id'), int):
-        return False, "Field 'id' missing or invalid type"
-    if 'payload' not in data or not isinstance(data.get('payload'), str):
-        return False, "Field 'payload' missing or invalid type"
-    return True, None
+def retry(max_attempts=3, delay=1, backoff=2, exceptions=(Exception,)):
+    """Decorator for retrying functions on specific exceptions."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        logger.error(f"Final attempt {attempt} failed: {e}")
+                        raise
+                    logger.warning(f"Attempt {attempt} failed. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-def process_stream(data_stream):
-    """Main processing loop with input validation."""
-    for item in data_stream:
-        is_valid, error = validate_input(item)
-        
-        if not is_valid:
-            logger.error(f"Validation failed: {error} for item: {item}")
-            continue
-            
-        try:
-            result = item['payload'].upper()
-            logger.info(f"Processed item {item['id']}: {result}")
-        except Exception as e:
-            logger.error(f"Unexpected error processing item {item.get('id')}: {e}")
-
-if __name__ == '__main__':
-    sample_data = [
-        {'id': 1, 'payload': 'hello world'},
-        {'id': 'two', 'payload': 'invalid id'},
-        {'id': 3, 'payload': 'valid entry'},
-        {'invalid': 'structure'}
-    ]
-    process_stream(sample_data)
+@retry(max_attempts=3, delay=2, exceptions=(ConnectionError, TimeoutError))
+def fetch_network_resource(url):
+    """Simulated network operation requiring retry logic."""
+    logger.info(f"Fetching from {url}")
+    # Simulate network instability
+    raise ConnectionError("Server unreachable")
