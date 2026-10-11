@@ -1,60 +1,32 @@
-"""Input validation utilities for record processing pipelines."""
+import logging
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+logger = logging.getLogger(__name__)
 
-
-class ValidationError(Exception):
-    """Raised when input validation fails."""
-    pass
-
-
-def validate_record(
-    record: Dict[str, Any],
-    schema: Dict[str, Tuple[type, bool, Optional[Callable[[Any], bool]]]],
-) -> Dict[str, Any]:
-    """Validate a single record against schema rules.
+def validate_input_schema(data):
+    """Validates dictionary structure and types for main loop processing."""
+    required_fields = {"id": int, "payload": str}
     
-    Schema format: {field_name: (expected_type, required, optional_validator_func)}
-    """
-    if not isinstance(record, dict):
-        raise ValidationError(f"Expected dict record, got {type(record).__name__}")
+    if not isinstance(data, dict):
+        raise ValueError("Input must be a dictionary")
+    
+    for field, expected_type in required_fields.items():
+        if field not in data:
+            raise KeyError(f"Missing required field: {field}")
+        if not isinstance(data[field], expected_type):
+            raise TypeError(f"Field {field} must be of type {expected_type.__name__}")
+    
+    return True
 
-    validated = {}
-    for field, rules in schema.items():
-        expected_type, required, custom_validator = rules
-        
-        if field not in record or record[field] is None:
-            if required:
-                raise ValidationError(f"Missing required field: '{field}'")
-            validated[field] = None
-            continue
-            
-        val = record[field]
-        if not isinstance(val, expected_type):
-            raise ValidationError(
-                f"Field '{field}' must be of type {expected_type.__name__}, got {type(val).__name__}"
-            )
-            
-        if custom_validator and not custom_validator(val):
-            raise ValidationError(f"Field '{field}' failed custom validation with value: {val}")
-            
-        validated[field] = val
-        
-    return validated
-
-
-def process_and_validate_batch(
-    items: List[Dict[str, Any]],
-    schema: Dict[str, Tuple[type, bool, Optional[Callable[[Any], bool]]]],
-    skip_invalid: bool = False,
-) -> List[Dict[str, Any]]:
-    """Validate a batch of input records within a processing loop."""
-    valid_records = []
-    for index, item in enumerate(items):
+def process_main_loop(items):
+    """Main processing loop with integrated input validation."""
+    processed = []
+    for item in items:
         try:
-            clean_item = validate_record(item, schema)
-            valid_records.append(clean_item)
-        except ValidationError as err:
-            if not skip_invalid:
-                raise ValidationError(f"Batch item at index {index} failed: {err}") from err
-    return valid_records
+            if validate_input_schema(item):
+                # Process logic for validated data
+                result = item["payload"].strip()
+                processed.append({ "id": item["id"], "status": "success", "val": result })
+        except (ValueError, KeyError, TypeError) as e:
+            logger.error(f"Skipping invalid item {item}: {e}")
+            continue
+    return processed
