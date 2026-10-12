@@ -1,29 +1,30 @@
 import json
-import os
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, Optional
 
-def read_json_file(file_path: str) -> Dict[str, Any]:
-    """Parses a JSON file into a dictionary."""
-    if not os.path.exists(file_path):
-        return {}
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+def sanitize_input(data: str) -> str:
+    """Removes extra whitespace and cleans input string."""
+    return data.strip()
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """Splits a list into smaller sub-lists of a fixed size."""
-    return [data[i:i + size] for i in range(0, len(data), size)]
+def safe_load_json(json_str: str) -> Optional[Dict[str, Any]]:
+    """Parses JSON string safely returning None on failure."""
+    try:
+        return json.loads(json_str)
+    except (json.JSONDecodeError, TypeError):
+        logging.error("invalid json input provided")
+        return None
 
-def sanitize_string(value: Any) -> str:
-    """Converts input to a stripped string safely."""
-    if value is None:
-        return ""
-    return str(value).strip()
+def chunk_list(items: list, size: int):
+    """Splits a list into smaller chunks of defined size."""
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
 
-def get_nested_value(data: Dict, keys: List[str], default: Any = None) -> Any:
-    """Traverses dictionary with a list of keys."""
-    for key in keys:
-        if isinstance(data, dict):
-            data = data.get(key, default)
-        else:
-            return default
-    return data
+def get_nested_key(data: dict, keys: list, default: Any = None) -> Any:
+    """Navigates deep dictionaries using list of keys."""
+    current = data
+    try:
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return default
