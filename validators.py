@@ -1,32 +1,43 @@
-import logging
+import re
+from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+class DataValidator:
+    """Utility class for common data structure validation tasks."""
 
-def validate_input_schema(data):
-    """Validates dictionary structure and types for main loop processing."""
-    required_fields = {"id": int, "payload": str}
-    
+    EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+    @staticmethod
+    def is_valid_email(email: str) -> bool:
+        """Check if the provided string follows standard email format."""
+        if not isinstance(email, str):
+            return False
+        return bool(DataValidator.EMAIL_REGEX.match(email))
+
+    @staticmethod
+    def validate_range(value: int, min_val: int, max_val: int) -> bool:
+        """Verify integer is within the inclusive boundaries."""
+        return isinstance(value, int) and min_val <= value <= max_val
+
+    @staticmethod
+    def sanitize_input(value: Any) -> str:
+        """Convert input to string and strip whitespace."""
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    @classmethod
+    def check_required_keys(cls, data: dict, keys: list[str]) -> bool:
+        """Ensure all specified keys exist in the dictionary."""
+        if not isinstance(data, dict):
+            return False
+        return all(key in data for key in keys)
+
+def validate_payload(data: Any, schema: dict) -> bool:
+    """Basic schema validation for incoming data objects."""
     if not isinstance(data, dict):
-        raise ValueError("Input must be a dictionary")
+        return False
     
-    for field, expected_type in required_fields.items():
-        if field not in data:
-            raise KeyError(f"Missing required field: {field}")
-        if not isinstance(data[field], expected_type):
-            raise TypeError(f"Field {field} must be of type {expected_type.__name__}")
-    
+    for key, expected_type in schema.items():
+        if key not in data or not isinstance(data[key], expected_type):
+            return False
     return True
-
-def process_main_loop(items):
-    """Main processing loop with integrated input validation."""
-    processed = []
-    for item in items:
-        try:
-            if validate_input_schema(item):
-                # Process logic for validated data
-                result = item["payload"].strip()
-                processed.append({ "id": item["id"], "status": "success", "val": result })
-        except (ValueError, KeyError, TypeError) as e:
-            logger.error(f"Skipping invalid item {item}: {e}")
-            continue
-    return processed
