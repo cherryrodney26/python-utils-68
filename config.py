@@ -1,32 +1,31 @@
+import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 class ConfigLoader:
-    """Handles loading and merging of configuration settings."""
+    """Utility for loading JSON configurations with fallback defaults."""
 
-    def __init__(self, env_prefix: str = "APP_") -> None:
-        self.env_prefix: str = env_prefix
-        self.settings: Dict[str, Any] = {}
+    def __init__(self, defaults: Dict[str, Any]):
+        self.defaults = defaults
 
-    def load_from_env(self) -> None:
-        """Loads environment variables into the settings dictionary."""
-        for key, value in os.environ.items():
-            if key.startswith(self.env_prefix):
-                config_key = key[len(self.env_prefix):].lower()
-                self.settings[config_key] = value
+    def load(self, filepath: str) -> Dict[str, Any]:
+        """Load config from file and merge with defaults."""
+        config = self.defaults.copy()
 
-    def get(self, key: str, default: Optional[Any] = None) -> Any:
-        """Retrieves a configuration value with a default fallback."""
-        return self.settings.get(key, default)
+        if not os.path.exists(filepath):
+            return config
 
-    def set_override(self, key: str, value: Any) -> None:
-        """Manually sets a configuration value."""
-        self.settings[key] = value
+        try:
+            with open(filepath, 'r') as f:
+                file_data = json.load(f)
+                if isinstance(file_data, dict):
+                    config.update(file_data)
+        except (json.JSONDecodeError, IOError):
+            pass
 
-def get_default_config() -> Dict[str, str]:
-    """Returns basic default configuration values."""
-    return {
-        "debug": "false",
-        "version": "1.0.0",
-        "log_level": "INFO"
-    }
+        return config
+
+def get_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Functional interface for config retrieval."""
+    loader = ConfigLoader(defaults)
+    return loader.load(filepath)
