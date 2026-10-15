@@ -1,33 +1,34 @@
 import logging
-import sys
+from logging.handlers import RotatingFileHandler
+import os
 
-def setup_logger(name: str):
-    """Initializes a logger with standard formatting."""
+def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
+    """Configures a rotating file logger for the application."""
     logger = logging.getLogger(name)
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
+
+    # Prevent duplicate handlers if setup is called multiple times
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+
+        # Rotate files: max 5MB, keep 3 backups
+        file_handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5*1024*1024, 
+            backupCount=3
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+        # Add console output for development visibility
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
     return logger
 
-def process_input_stream(data_stream, logger):
-    """Processes stream items with validation."""
-    for entry in data_stream:
-        if not isinstance(entry, dict) or 'id' not in entry:
-            logger.error(f"Invalid input format encountered: {entry}")
-            continue
-        
-        if not isinstance(entry['id'], int):
-            logger.warning(f"Skipping invalid id type: {entry['id']}")
-            continue
-            
-        try:
-            logger.info(f"Processing record {entry['id']}")
-        except Exception as e:
-            logger.error(f"Unexpected processing failure: {e}")
-
-if __name__ == "__main__":
-    log = setup_logger("processor")
-    sample_data = [{'id': 1}, 'bad_data', {'id': 'invalid'}, {'id': 2}]
-    process_input_stream(sample_data, log)
+if __name__ == '__main__':
+    log = setup_logger()
+    log.info('logger initialization sequence completed')
