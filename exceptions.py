@@ -1,29 +1,35 @@
-import time
-import functools
-import random
-from typing import Callable, Any, Type, Tuple
+class BaseUtilsError(Exception):
+    """Base exception for the python-utils-68 package."""
 
-class NetworkRetryError(Exception):
-    """Exception raised when retries are exhausted."""
-    pass
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration values are invalid or missing."""
 
-def retry_network_op(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-                     max_retries: int = 3, 
-                     backoff: float = 1.0):
-    """Decorator to retry a function if specific network exceptions occur."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    if attempt < max_retries - 1:
-                        sleep_time = backoff * (2 ** attempt) + random.uniform(0, 0.1)
-                        time.sleep(sleep_time)
-                        continue
-            raise NetworkRetryError(f"Failed after {max_retries} attempts: {last_exception}")
+class ValidationError(BaseUtilsError):
+    """Raised when data validation fails."""
+
+class ResourceNotFoundError(BaseUtilsError):
+    """Raised when a requested resource does not exist."""
+
+class ExecutionTimeoutError(BaseUtilsError):
+    """Raised when an operation exceeds allocated time."""
+
+def raise_if_none(value, message="Value cannot be None"):
+    """Validates that a value is not None, raises ValidationError otherwise."""
+    if value is None:
+        raise ValidationError(message)
+
+def format_exception(exc):
+    """Returns a string representation of an exception with its type."""
+    return f"{type(exc).__name__}: {str(exc)}"
+
+def catch_and_log(logger, message):
+    """Decorator for simple exception logging wrapper."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"{message}: {format_exception(e)}")
+                raise
         return wrapper
     return decorator
