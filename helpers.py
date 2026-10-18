@@ -1,32 +1,32 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+import json
+import os
+from typing import Any, Dict, Optional
 
-# Cache for storing expensive function results
-_CACHE: Dict[tuple, Any] = {}
+def load_json_file(filepath: str) -> Dict[str, Any]:
+    """Loads data from a JSON file into a dictionary."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def memoize(func: Callable) -> Callable:
-    """Decorator for caching function return values to improve execution speed."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, tuple(sorted(kwargs.items())))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+def save_json_file(data: Dict[str, Any], filepath: str) -> bool:
+    """Saves dictionary data to a JSON file."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except (IOError, TypeError):
+        return False
 
-def batch_process(items: list, chunk_size: int = 100):
-    """Generator for memory-efficient iteration over large datasets."""
-    for i in range(0, len(items), chunk_size):
-        yield items[i:i + chunk_size]
+def chunk_list(data: list, size: int):
+    """Splits a list into smaller chunks."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
 
-def timed_execution(func: Callable) -> Callable:
-    """Performance monitoring wrapper for core module analysis."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        print(f"Execution of {func.__name__} took {duration:.4f}s")
-        return result
-    return wrapper
+def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieves environment variable with optional default value."""
+    return os.environ.get(key, default)
+
+def sanitize_string(value: str) -> str:
+    """Removes whitespace and converts to lowercase."""
+    return value.strip().lower()
