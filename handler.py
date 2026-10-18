@@ -1,44 +1,60 @@
-from typing import Any, Dict, Optional, Callable
 import logging
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
+
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
-class DataHandler:
-    """Handles transformation and validation of input datasets."""
 
-    def __init__(self, transform_func: Optional[Callable[[Any], Any]] = None) -> None:
-        self.transform_func = transform_func
+class SafeHandler:
+    """Utility handler designed to execute operations safely with edge case recovery."""
 
-    def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Applies transformation logic to the provided dictionary data.
+    @staticmethod
+    def safe_cast(val: Any, target_type: type, default: Optional[Any] = None) -> Any:
+        """Safely cast value to target_type, returning default on failure."""
+        if val is None:
+            return default
+        try:
+            return target_type(val)
+        except (ValueError, TypeError) as err:
+            logger.debug(f"Failed to cast {val!r} to {target_type.__name__}: {err}")
+            return default
 
-        Args:
-            data: A dictionary containing raw input data.
+    @staticmethod
+    def safe_get(data: Dict[str, Any], key_path: str, default: Any = None, delimiter: str = ".") -> Any:
+        """Retrieve nested dictionary or list values using delimited keys with boundary checks."""
+        if not isinstance(data, dict) or not key_path:
+            return default
 
-        Returns:
-            A dictionary with processed values.
-        """
-        if not isinstance(data, dict):
-            raise ValueError("Data must be a dictionary")
+        keys = key_path.split(delimiter)
+        current: Any = data
 
-        processed = data.copy()
-        if self.transform_func:
-            for key, value in processed.items():
-                processed[key] = self.transform_func(value)
-        
-        logger.info(f"Processed {len(processed)} items successfully")
-        return processed
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            elif isinstance(current, (list, tuple)):
+                idx = SafeHandler.safe_cast(key, int)
+                if idx is not None and 0 <= idx < len(current):
+                    current = current[idx]
+                else:
+                    return default
+            else:
+                return default
 
-    def validate_keys(self, data: Dict[str, Any], required_keys: list[str]) -> bool:
-        """
-        Checks if all required keys are present in the dictionary.
+        return current
 
-        Args:
-            data: The dictionary to check.
-            required_keys: A list of keys that must exist.
-
-        Returns:
-            True if all keys are present, False otherwise.
-        """
-        return all(key in data for key in required_keys)
+    @staticmethod
+    def execute_with_fallback(
+        func: Callable[..., T],
+        *args: Any,
+        fallback: Optional[T] = None,
+        **kwargs: Any
+    ) -> Tuple[Optional[T], Optional[Exception]]:
+        """Execute function catching standard runtime errors and returning result with error state."""
+        try:
+            result = func(*args, **kwargs)
+            return result, None
+        except Exception as exc:
+            func_name = getattr(func, "__name__", "callable")
+            logger.warning(f"Error executing {func_name}: {exc}")
+            return fallback, exc
