@@ -1,34 +1,32 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from typing import Optional
 
-def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
-    """Configures a rotating file logger for the application."""
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """Configures and returns a standardized console logger."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if setup is called multiple times
     if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-
-        # Rotate files: max 5MB, keep 3 backups
-        file_handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5*1024*1024, 
-            backupCount=3
-        )
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-        # Add console output for development visibility
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     return logger
 
-if __name__ == '__main__':
-    log = setup_logger()
-    log.info('logger initialization sequence completed')
+def log_exception(logger: logging.Logger, msg: str, exc: Exception) -> None:
+    """Utility to log formatted exception details."""
+    logger.error(f"{msg}: {type(exc).__name__} - {str(exc)}", exc_info=True)
+
+class LoggerManager:
+    """Singleton-style access for project-wide logging."""
+    _loggers = {}
+
+    @classmethod
+    def get(cls, name: str) -> logging.Logger:
+        if name not in cls._loggers:
+            cls._loggers[name] = get_logger(name)
+        return cls._loggers[name]
