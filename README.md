@@ -1,13 +1,13 @@
 # python-utils-68
 
-A lightweight collection of robust, production-ready Python helper functions designed to streamline repetitive coding tasks. This utility suite focuses on performance, type safety, and minimizing boilerplate across diverse data processing workflows.
+A collection of lightweight, high-performance Python utilities designed to streamline common development tasks. This library focuses on reducing boilerplate code for file handling, data transformation, and environment configuration.
 
 ## Features
 
-*   **FileSystem Streamliner:** Simplify directory traversal and file manipulation with atomic path operations and recursive pattern matching.
-*   **Dict-Object Mapper:** Seamlessly convert nested dictionaries to attribute-access objects for cleaner configuration management.
-*   **Performance Decorators:** Built-in tools for easy execution timing, memoization, and retry logic with exponential backoff.
-*   **String Sanitizer:** Efficient text normalization tools to strip whitespace, clean Unicode artifacts, and validate input formats.
+*   **Robust File Operations:** Simplified decorators for recursive file traversal and thread-safe batch processing of large directories.
+*   **Data Transformation:** Built-in sanitization and schema-validation helpers for cleaning messy CSV/JSON exports.
+*   **Env Manager:** A zero-dependency configuration loader that prioritizes environment variables and defaults over `.env` file reading.
+*   **Performance Metrics:** Decorator-based execution timing and memory logging for benchmarking production code in real-time.
 
 ## Installation
 
@@ -17,35 +17,35 @@ Install `python-utils-68` directly via pip:
 pip install python-utils-68
 ```
 
-Alternatively, if you are cloning the repository:
+Alternatively, if you are working within a requirements-based workflow:
 
 ```bash
-git clone https://github.com/Developer/python-utils-68.git
-cd python-utils-68
+echo "python-utils-68==1.0.4" >> requirements.txt
 pip install -r requirements.txt
 ```
 
-## Basic Usage
+## Usage
 
-Integrate utility modules into your existing scripts with minimal overhead:
+Below is a quick example of how to use the built-in performance decorator to monitor function execution:
 
 ```python
-from pyutils68 import timers, sanitizers
+from pyutils68.metrics import time_execution
+from pyutils68.files import secure_load
 
-# Measure function performance automatically
-@timers.measure_execution_time
-def process_data(data):
-    return [sanitizers.normalize_text(i) for i in data]
+@time_execution
+def process_data(file_path):
+    data = secure_load(file_path)
+    # ... logic here ...
+    return data
 
-data = ["  Hello World! ", "  Python-Utils-68 "]
-clean_data = process_data(data)
-
-print(clean_data)
-# Output: ['Hello World!', 'Python-Utils-68']
+result = process_data("data/input.json")
 ```
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+*Developed by Developer. Built for reliability and performance.*
