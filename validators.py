@@ -1,43 +1,38 @@
+import functools
 import re
-from typing import Any, Optional
+from typing import Any, Dict
+
+# Cache compiled patterns for validation efficiency
+_PATTERN_CACHE: Dict[str, re.Pattern] = {}
+
+def get_pattern(regex: str) -> re.Pattern:
+    """Thread-safe access to cached regex objects."""
+    if regex not in _PATTERN_CACHE:
+        _PATTERN_CACHE[regex] = re.compile(regex)
+    return _PATTERN_CACHE[regex]
+
+@functools.lru_cache(maxsize=1024)
+def validate_string_format(value: str, pattern: str) -> bool:
+    """High-performance validation using cached patterns and lru_cache."""
+    if not isinstance(value, str):
+        return False
+    return bool(get_pattern(pattern).match(value))
+
+def batch_validate(data_list: list, pattern: str) -> list:
+    """Optimized batch processing of string validation checks."""
+    regex_obj = get_pattern(pattern)
+    return [isinstance(item, str) and bool(regex_obj.match(item)) for item in data_list]
 
 class DataValidator:
-    """Utility class for common data structure validation tasks."""
+    """Reusable validator instance with internal pattern memoization."""
+    def __init__(self, schema: Dict[str, str]):
+        self.schema = schema
+        self._compiled = {k: re.compile(v) for k, v in schema.items()}
 
-    EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-
-    @staticmethod
-    def is_valid_email(email: str) -> bool:
-        """Check if the provided string follows standard email format."""
-        if not isinstance(email, str):
-            return False
-        return bool(DataValidator.EMAIL_REGEX.match(email))
-
-    @staticmethod
-    def validate_range(value: int, min_val: int, max_val: int) -> bool:
-        """Verify integer is within the inclusive boundaries."""
-        return isinstance(value, int) and min_val <= value <= max_val
-
-    @staticmethod
-    def sanitize_input(value: Any) -> str:
-        """Convert input to string and strip whitespace."""
-        if value is None:
-            return ""
-        return str(value).strip()
-
-    @classmethod
-    def check_required_keys(cls, data: dict, keys: list[str]) -> bool:
-        """Ensure all specified keys exist in the dictionary."""
-        if not isinstance(data, dict):
-            return False
-        return all(key in data for key in keys)
-
-def validate_payload(data: Any, schema: dict) -> bool:
-    """Basic schema validation for incoming data objects."""
-    if not isinstance(data, dict):
-        return False
-    
-    for key, expected_type in schema.items():
-        if key not in data or not isinstance(data[key], expected_type):
-            return False
-    return True
+    def check(self, data: Dict[str, Any]) -> bool:
+        """Efficient dictionary field verification against schema."""
+        for field, pattern in self._compiled.items():
+            val = data.get(field)
+            if not isinstance(val, str) or not pattern.match(val):
+                return False
+        return True
