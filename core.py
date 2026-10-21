@@ -1,38 +1,39 @@
-import logging
-from typing import Any, Callable, Optional
+import functools
+import time
+from typing import Callable, Any, Dict
 
-logger = logging.getLogger(__name__)
+# global cache for heavy computation results
+_CACHE: Dict[tuple, Any] = {}
 
-def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
-    """Execute function with robust error handling for edge cases."""
-    if not callable(func):
-        logger.error("Provided object is not callable")
-        return default
+def memoize_result(func: Callable) -> Callable:
+    """Thread-safe memoization decorator for expensive operations."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-    try:
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, AttributeError) as e:
-        logger.warning(f"Validation or attribute error in {func.__name__}: {e}")
-        return default
-    except Exception as e:
-        logger.critical(f"Unexpected system failure in {func.__name__}: {e}", exc_info=True)
-        return default
+def batch_process(data: list, chunk_size: int = 100):
+    """Generator for memory-efficient batch processing."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
-def validate_input(value: Any, expected_type: type) -> bool:
-    """Check for null inputs and type consistency."""
-    if value is None:
-        return False
-    return isinstance(value, expected_type)
-
-class ExecutionContext:
-    """Context manager for resource cleanup during operations."""
-    def __init__(self, resource: Any):
-        self.resource = resource
+class PerformanceTracker:
+    """Context manager for tracking execution duration."""
+    def __init__(self, name: str):
+        self.name = name
+        self.start = 0.0
 
     def __enter__(self):
-        return self.resource
+        self.start = time.perf_counter()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            logger.error(f"Cleanup triggered by error: {exc_val}")
-        return False
+        elapsed = time.perf_counter() - self.start
+        print(f"[Performance] {self.name} took {elapsed:.4f}s")
+
+def clear_core_cache() -> None:
+    """Manual cache invalidation for system memory management."""
+    _CACHE.clear()
