@@ -1,38 +1,23 @@
-import functools
 import re
-from typing import Any, Dict
+from typing import Any, Optional
 
-# Cache compiled patterns for validation efficiency
-_PATTERN_CACHE: Dict[str, re.Pattern] = {}
+def is_valid_email(email: str) -> bool:
+    """Validate email address format."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, email))
 
-def get_pattern(regex: str) -> re.Pattern:
-    """Thread-safe access to cached regex objects."""
-    if regex not in _PATTERN_CACHE:
-        _PATTERN_CACHE[regex] = re.compile(regex)
-    return _PATTERN_CACHE[regex]
+def is_non_empty_string(value: Any) -> bool:
+    """Check if input is a non-empty string."""
+    return isinstance(value, str) and len(value.strip()) > 0
 
-@functools.lru_cache(maxsize=1024)
-def validate_string_format(value: str, pattern: str) -> bool:
-    """High-performance validation using cached patterns and lru_cache."""
-    if not isinstance(value, str):
-        return False
-    return bool(get_pattern(pattern).match(value))
+def is_within_range(value: int, min_val: int, max_val: int) -> bool:
+    """Check if integer is within inclusive bounds."""
+    return isinstance(value, int) and min_val <= value <= max_val
 
-def batch_validate(data_list: list, pattern: str) -> list:
-    """Optimized batch processing of string validation checks."""
-    regex_obj = get_pattern(pattern)
-    return [isinstance(item, str) and bool(regex_obj.match(item)) for item in data_list]
+def validate_required_keys(data: dict, keys: list[str]) -> bool:
+    """Verify presence of mandatory keys in dictionary."""
+    return all(key in data for key in keys)
 
-class DataValidator:
-    """Reusable validator instance with internal pattern memoization."""
-    def __init__(self, schema: Dict[str, str]):
-        self.schema = schema
-        self._compiled = {k: re.compile(v) for k, v in schema.items()}
-
-    def check(self, data: Dict[str, Any]) -> bool:
-        """Efficient dictionary field verification against schema."""
-        for field, pattern in self._compiled.items():
-            val = data.get(field)
-            if not isinstance(val, str) or not pattern.match(val):
-                return False
-        return True
+def sanitize_input(value: str) -> str:
+    """Remove dangerous characters for basic sanitization."""
+    return re.sub(r'[^a-zA-Z0-9\s]', '', value)
