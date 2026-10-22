@@ -1,39 +1,42 @@
 import functools
-import time
-from typing import Callable, Any, Dict
+from itertools import islice
+from typing import Any, Callable, Generator, Iterable, List, Optional
 
-# global cache for heavy computation results
-_CACHE: Dict[tuple, Any] = {}
 
-def memoize_result(func: Callable) -> Callable:
-    """Thread-safe memoization decorator for expensive operations."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+class FastBatchProcessor:
+    """High-performance batch processing engine with memoized transforms."""
 
-def batch_process(data: list, chunk_size: int = 100):
-    """Generator for memory-efficient batch processing."""
-    for i in range(0, len(data), chunk_size):
-        yield data[i:i + chunk_size]
+    def __init__(self, batch_size: int = 1000) -> None:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be a positive integer")
+        self.batch_size = batch_size
 
-class PerformanceTracker:
-    """Context manager for tracking execution duration."""
-    def __init__(self, name: str):
-        self.name = name
-        self.start = 0.0
+    @functools.lru_cache(maxsize=4096)
+    def _memoized_transform(self, item: Any, transform_fn: Callable[[Any], Any]) -> Any:
+        """Cache repeated transformations on identical data elements."""
+        return transform_fn(item)
 
-    def __enter__(self):
-        self.start = time.perf_counter()
-        return self
+    def chunk_iterable(self, iterable: Iterable[Any]) -> Generator[List[Any], None, None]:
+        """Yield successive chunks from iterable without loading full stream into memory."""
+        iterator = iter(iterable)
+        while True:
+            chunk = list(islice(iterator, self.batch_size))
+            if not chunk:
+                break
+            yield chunk
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        elapsed = time.perf_counter() - self.start
-        print(f"[Performance] {self.name} took {elapsed:.4f}s")
+    def process_stream(
+        self,
+        data_stream: Iterable[Any],
+        transform_fn: Callable[[Any], Any],
+        filter_fn: Optional[Callable[[Any], bool]] = None,
+    ) -> Generator[Any, None, None]:
+        """Stream processing pipeline utilizing batched chunks and cached transforms."""
+        for batch in self.chunk_iterable(data_stream):
+            items = (item for item in batch if filter_fn(item)) if filter_fn else batch
+            for item in items:
+                yield self._memoized_transform(item, transform_fn)
 
-def clear_core_cache() -> None:
-    """Manual cache invalidation for system memory management."""
-    _CACHE.clear()
+    def clear_cache(self) -> None:
+        """Reset internal transformer lookup cache."""
+        self._memoized_transform.cache_clear()
