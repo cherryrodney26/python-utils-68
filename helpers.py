@@ -1,32 +1,39 @@
-import json
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Union
+from collections.abc import Mapping
 
-def load_json_file(filepath: str) -> Dict[str, Any]:
-    """Loads data from a JSON file into a dictionary."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+def deep_flatten(data: Union[List, Dict], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """
+    Flattens a nested dictionary into a single-level dictionary.
+    Uses dot notation or custom separator for keys.
+    """
+    items: List[tuple] = []
+    for key, value in data.items() if isinstance(data, Mapping) else enumerate(data):
+        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
+        if isinstance(value, (dict, list)) and value:
+            items.extend(deep_flatten(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
 
-def save_json_file(data: Dict[str, Any], filepath: str) -> bool:
-    """Saves dictionary data to a JSON file."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except (IOError, TypeError):
-        return False
+def sanitize_keys(data: Dict[str, Any], allowed_chars: str = '_') -> Dict[str, Any]:
+    """
+    Replaces non-alphanumeric characters in keys with allowed_chars.
+    Useful for database column mapping or clean config loading.
+    """
+    sanitized = {}
+    for key, value in data.items():
+        clean_key = ''.join(c if c.isalnum() else allowed_chars for c in str(key))
+        if isinstance(value, dict):
+            sanitized[clean_key] = sanitize_keys(value, allowed_chars)
+        else:
+            sanitized[clean_key] = value
+    return sanitized
 
-def chunk_list(data: list, size: int):
-    """Splits a list into smaller chunks."""
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
-
-def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Retrieves environment variable with optional default value."""
-    return os.environ.get(key, default)
-
-def sanitize_string(value: str) -> str:
-    """Removes whitespace and converts to lowercase."""
-    return value.strip().lower()
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """
+    Splits a list into smaller chunks of specified size.
+    Useful for batch processing large datasets.
+    """
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+    return [data[i:i + size] for i in range(0, len(data), size)]
