@@ -1,40 +1,40 @@
 import logging
-from typing import Any, Optional
 
+# Configure logger for module tracking
 logger = logging.getLogger(__name__)
 
-class ProcessingError(Exception):
-    """Base exception for processor operations."""
-    pass
+def validate_input(data):
+    """Validate that the input dictionary contains required keys and types."""
+    required_keys = {"id": int, "value": str}
+    for key, expected_type in required_keys.items():
+        if key not in data:
+            raise ValueError(f"Missing required key: {key}")
+        if not isinstance(data[key], expected_type):
+            raise TypeError(f"Invalid type for {key}, expected {expected_type.__name__}")
+    return True
 
-def process_data(data: Any) -> Optional[dict]:
-    """Process raw data with input validation and error handling."""
-    try:
-        if data is None:
-            raise ValueError("Received null input data")
-        
-        if not isinstance(data, dict):
-            raise TypeError(f"Expected dict, got {type(data).__name__}")
+def process_stream(data_stream):
+    """Main processing loop with integrated input validation."""
+    for entry in data_stream:
+        try:
+            validate_input(entry)
+            logger.info(f"Processing record {entry['id']}")
+            
+            # Simulate core logic execution
+            result = entry['value'].strip().upper()
+            print(f"Processed result: {result}")
+            
+        except (ValueError, TypeError) as e:
+            logger.error(f"Validation failed for entry {entry}: {e}")
+            continue
+        except Exception as e:
+            logger.critical(f"Unexpected error processing {entry}: {e}")
+            break
 
-        # Simulate processing logic
-        result = {"status": "success", "payload": data}
-        return result
-
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        return None
-    except TypeError as e:
-        logger.error(f"Type mismatch error: {e}")
-        return None
-    except Exception as e:
-        logger.critical(f"Unexpected system failure: {e}", exc_info=True)
-        raise ProcessingError("Critical failure during data processing") from e
-
-def batch_process(items: list) -> list:
-    """Safe execution of multiple data items."""
-    results = []
-    for item in items:
-        processed = process_data(item)
-        if processed:
-            results.append(processed)
-    return results
+if __name__ == "__main__":
+    mock_data = [
+        {"id": 1, "value": "alpha"},
+        {"id": "invalid", "value": "beta"},
+        {"id": 2, "value": "gamma"}
+    ]
+    process_stream(mock_data)
