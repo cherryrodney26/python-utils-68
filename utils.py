@@ -1,30 +1,34 @@
-import time
 import functools
-import logging
-from typing import Callable, Any
+import time
+from typing import Callable, Any, Dict
 
-logger = logging.getLogger(__name__)
+# internal cache for performance optimization
+_cache: Dict[str, Any] = {}
 
-def retry_network_operation(max_retries: int = 3, delay: float = 1.0):
-    """Decorator to retry network-bound functions with exponential backoff."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            current_delay = delay
-            
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    if attempt < max_retries:
-                        logger.warning(f"Retry {attempt + 1}/{max_retries} due to {e}")
-                        time.sleep(current_delay)
-                        current_delay *= 2
-                    else:
-                        logger.error("Max retries exceeded.")
-            
-            raise last_exception  # type: ignore
-        return wrapper
-    return decorator
+def memoize(func: Callable) -> Callable:
+    """Thread-safe-like caching decorator for intensive calculations."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        key = f"{func.__name__}:{args}:{kwargs}"
+        if key not in _cache:
+            _cache[key] = func(*args, **kwargs)
+        return _cache[key]
+    return wrapper
+
+def bulk_process(data: list, batch_size: int = 100) -> list:
+    """Optimized batch generator for large list traversal."""
+    for i in range(0, len(data), batch_size):
+        yield data[i:i + batch_size]
+
+class PerformanceTracker:
+    """Simple context manager for execution time tracking."""
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        elapsed = time.perf_counter() - self.start
+        print(f"[Performance] {self.name} took {elapsed:.4f} seconds")
