@@ -1,36 +1,37 @@
 import os
-from pathlib import Path
+import logging
+from typing import Final
 
-# Global paths for file system operations
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-LOG_DIR = BASE_DIR / "logs"
+# Application-wide configuration defaults and constants
 
-# Ensure default directories exist
-for directory in [DATA_DIR, LOG_DIR]:
-    directory.mkdir(parents=True, exist_ok=True)
+APP_NAME: Final[str] = "python-utils-68"
+VERSION: Final[str] = "1.0.0"
 
-# Environment configuration constants
-DEFAULT_ENCODING = "utf-8"
-TIMEOUT_SECONDS = 30
-MAX_RETRIES = 3
+# Logging configuration constants
+LOG_FORMAT: Final[str] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_LEVEL: Final[int] = logging.INFO
 
-# Common regex patterns
-EMAIL_PATTERN = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+# Time and timeout defaults in seconds
+DEFAULT_TIMEOUT: Final[float] = 30.0
+RETRY_ATTEMPTS: Final[int] = 3
+BACKOFF_FACTOR: Final[float] = 1.5
 
-# Default headers for API interactions
-DEFAULT_HEADERS = {
-    "User-Agent": "python-utils-68-agent/1.0",
-    "Content-Type": "application/json"
-}
+# Environment-based paths with fallback
+DATA_DIR: Final[str] = os.getenv("DATA_DIR", "./data")
+CACHE_DIR: Final[str] = os.getenv("CACHE_DIR", "./cache")
 
-def get_env_variable(key: str, default: str = None) -> str:
-    """Retrieve environment variable with fallback value."""
-    return os.getenv(key, default)
+# Content type and encoding standards
+DEFAULT_ENCODING: Final[str] = "utf-8"
+JSON_MIME_TYPE: Final[str] = "application/json"
 
-# System status codes
-STATUS_OK = 200
-STATUS_CREATED = 201
-STATUS_BAD_REQUEST = 400
-STATUS_NOT_FOUND = 404
-STATUS_SERVER_ERROR = 500
+# Validator thresholds
+MIN_PASSWORD_LENGTH: Final[int] = 12
+MAX_RETRIES_LIMIT: Final[int] = 10
+
+def get_app_metadata() -> dict:
+    """Return common application metadata dictionary."""
+    return {
+        "app": APP_NAME,
+        "version": VERSION,
+        "default_encoding": DEFAULT_ENCODING
+    }
