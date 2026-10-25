@@ -1,31 +1,36 @@
-import os
 import json
-import logging
+import os
+from typing import Any, Dict
 
-logger = logging.getLogger(__name__)
-
-def load_config(filepath: str) -> dict:
-    """Loads configuration from a JSON file with validation."""
-    if not filepath:
-        raise ValueError("configuration filepath cannot be empty")
+def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Loads configuration from a JSON file, merging with provided defaults.
+    Returns the resulting dictionary.
+    """
+    config = defaults.copy()
 
     if not os.path.exists(filepath):
-        logger.error(f"config file missing: {filepath}")
-        return {}
+        return config
 
     try:
         with open(filepath, 'r') as f:
             data = json.load(f)
-            if not isinstance(data, dict):
-                logger.warning(f"invalid format in {filepath}, expected dict")
-                return {}
-            return data
-    except json.JSONDecodeError as e:
-        logger.error(f"failed to parse json in {filepath}: {e}")
-        return {}
-    except PermissionError:
-        logger.error(f"insufficient permissions for {filepath}")
-        return {}
-    except Exception as e:
-        logger.error(f"unexpected error reading config: {e}")
-        return {}
+            if isinstance(data, dict):
+                config.update(data)
+    except (json.JSONDecodeError, IOError):
+        pass
+
+    return config
+
+def save_config(filepath: str, config: Dict[str, Any]) -> None:
+    """
+    Saves the configuration dictionary to a JSON file.
+    """
+    with open(filepath, 'w') as f:
+        json.dump(config, f, indent=4)
+
+# Example usage:
+if __name__ == '__main__':
+    defaults = {'host': 'localhost', 'port': 8080}
+    settings = load_config('settings.json', defaults)
+    print(f'Loaded settings: {settings}')
