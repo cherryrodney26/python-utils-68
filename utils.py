@@ -1,47 +1,28 @@
-from typing import List, Any, Optional
+import time
+import functools
+import logging
 
-def flatten_list(nested_list: List[Any]) -> List[Any]:
-    """
-    Recursively flattens a nested list into a single list.
+logger = logging.getLogger(__name__)
 
-    :param nested_list: List containing elements or further nested lists.
-    :return: A flat list containing all non-list elements.
+def retry_network_operation(max_attempts=3, delay=2, backoff=2):
     """
-    flat: List[Any] = []
-    for item in nested_list:
-        if isinstance(item, list):
-            flat.extend(flatten_list(item))
-        else:
-            flat.append(item)
-    return flat
-
-def get_dict_path(data: dict, path: str, delimiter: str = '.') -> Optional[Any]:
+    Decorator for retrying network operations with exponential backoff.
     """
-    Retrieves a nested value from a dictionary using a dot-notation path.
-
-    :param data: The dictionary to search.
-    :param path: The string path (e.g., 'a.b.c').
-    :param delimiter: The separator for the path keys.
-    :return: The found value or None if path is invalid.
-    """
-    keys = path.split(delimiter)
-    current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return None
-
-def truncate_string(text: str, limit: int = 50, suffix: str = '...') -> str:
-    """
-    Truncates a string to a specified length and appends a suffix.
-
-    :param text: The source string.
-    :param limit: Maximum length of the result including suffix.
-    :param suffix: String to append if truncation occurs.
-    :return: The truncated string.
-    """
-    if len(text) <= limit:
-        return text
-    return text[:limit - len(suffix)] + suffix
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempts = 0
+            current_delay = delay
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        logger.error(f"Final attempt failed for {func.__name__}")
+                        raise
+                    logger.warning(f"Attempt {attempts} failed: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
