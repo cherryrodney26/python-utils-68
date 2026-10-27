@@ -1,35 +1,49 @@
-class BaseUtilsError(Exception):
-    """Base exception for the python-utils-68 package."""
+"""Custom exception hierarchy and error handling utilities for edge cases."""
 
-class ConfigurationError(BaseUtilsError):
-    """Raised when configuration values are invalid or missing."""
+from typing import Any, Callable, Optional, Type, Union
+import functools
 
-class ValidationError(BaseUtilsError):
-    """Raised when data validation fails."""
 
-class ResourceNotFoundError(BaseUtilsError):
-    """Raised when a requested resource does not exist."""
+class BaseUtilError(Exception):
+    """Base exception class for all python-utils package errors."""
 
-class ExecutionTimeoutError(BaseUtilsError):
-    """Raised when an operation exceeds allocated time."""
+    def __init__(self, message: str, payload: Optional[Any] = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.payload = payload
 
-def raise_if_none(value, message="Value cannot be None"):
-    """Validates that a value is not None, raises ValidationError otherwise."""
-    if value is None:
-        raise ValidationError(message)
+    def __str__(self) -> str:
+        if self.payload is not None:
+            return f"{self.message} [payload={self.payload!r}]"
+        return self.message
 
-def format_exception(exc):
-    """Returns a string representation of an exception with its type."""
-    return f"{type(exc).__name__}: {str(exc)}"
 
-def catch_and_log(logger, message):
-    """Decorator for simple exception logging wrapper."""
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+class ValidationError(BaseUtilError):
+    """Raised when input parameters fail domain or formatting constraints."""
+    pass
+
+
+class ResourceLimitError(BaseUtilError):
+    """Raised when execution limits like memory or iteration counts are exceeded."""
+    pass
+
+
+class ConversionError(BaseUtilError):
+    """Raised when data transformation fails for boundary or invalid values."""
+    pass
+
+
+def safe_execute(
+    default_value: Any = None,
+    caught_exceptions: Union[Type[Exception], tuple[Type[Exception], ...]] = (BaseUtilError, ValueError, TypeError)
+) -> Callable:
+    """Decorator to safely handle edge case exceptions and return a fallback value."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
-                logger.error(f"{message}: {format_exception(e)}")
-                raise
+            except caught_exceptions:
+                return default_value
         return wrapper
     return decorator
