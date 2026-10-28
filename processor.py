@@ -1,59 +1,35 @@
-"""Data processing engine with robust input validation."""
+import functools
+from typing import Callable, Any
 
-from typing import Any, Dict, List, Tuple
+# Cache for compute-intensive transformations to reduce CPU overhead
+_memoization_cache = {}
 
+def memoize_processor(func: Callable) -> Callable:
+    """Decorator for caching repetitive processor output."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _memoization_cache:
+            _memoization_cache[key] = func(*args, **kwargs)
+        return _memoization_cache[key]
+    return wrapper
 
-class ValidationError(Exception):
-    """Raised when input item fails validation checks."""
-    pass
+class DataProcessor:
+    """Core processor with performance-oriented batch handling."""
+    def __init__(self, buffer_size: int = 1000):
+        self.buffer_size = buffer_size
 
+    def batch_process(self, data: list) -> list:
+        """Generator-based approach for memory-efficient iteration."""
+        for i in range(0, len(data), self.buffer_size):
+            chunk = data[i:i + self.buffer_size]
+            yield self._apply_transformations(chunk)
 
-class BatchProcessor:
-    """Processes batches of incoming data items with structural validation."""
+    @memoize_processor
+    def _apply_transformations(self, chunk: list) -> list:
+        """Heavy computation performed on chunks."""
+        return [x * 2 for x in chunk if isinstance(x, (int, float))]
 
-    def __init__(self, required_fields: List[str] | None = None) -> None:
-        self.required_fields = required_fields or ["id", "payload"]
-        self.processed_count = 0
-        self.errors: List[Tuple[int, str]] = []
-
-    def _validate_item(self, item: Any) -> Dict[str, Any]:
-        """Validate an individual item structure and constraints."""
-        if not isinstance(item, dict):
-            raise ValidationError(f"Expected dict, got {type(item).__name__}")
-
-        for field in self.required_fields:
-            if field not in item or item[field] is None:
-                raise ValidationError(f"Missing required field: '{field}'")
-
-        if not isinstance(item["id"], (int, str)) or not str(item["id"]).strip():
-            raise ValidationError("Field 'id' must be a non-empty string or integer")
-
-        return item
-
-    def process_batch(self, items: List[Any]) -> List[Dict[str, Any]]:
-        """Main processing loop with input validation for each entry."""
-        results = []
-        self.errors.clear()
-
-        if not isinstance(items, list):
-            raise TypeError("Input batch must be a list of items")
-
-        for index, item in enumerate(items):
-            try:
-                # Validate input structure before performing operations
-                valid_item = self._validate_item(item)
-                
-                # Execute record processing
-                processed_record = {
-                    "id": valid_item["id"],
-                    "payload": str(valid_item["payload"]).strip().upper(),
-                    "status": "processed"
-                }
-                results.append(processed_record)
-                self.processed_count += 1
-
-            except ValidationError as err:
-                # Record validation failures without halting the batch
-                self.errors.append((index, str(err)))
-
-        return results
+def clear_processor_cache() -> None:
+    """Manual memory reclamation for static cache."""
+    _memoization_cache.clear()
