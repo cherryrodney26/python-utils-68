@@ -1,39 +1,38 @@
-from typing import Any, Dict, List, Union
-from collections.abc import Mapping
+import json
+import logging
+from typing import Any, Dict, Optional
 
-def deep_flatten(data: Union[List, Dict], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """
-    Flattens a nested dictionary into a single-level dictionary.
-    Uses dot notation or custom separator for keys.
-    """
-    items: List[tuple] = []
-    for key, value in data.items() if isinstance(data, Mapping) else enumerate(data):
-        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
-        if isinstance(value, (dict, list)) and value:
-            items.extend(deep_flatten(value, new_key, sep=sep).items())
-        else:
-            items.append((new_key, value))
-    return dict(items)
+logger = logging.getLogger(__name__)
 
-def sanitize_keys(data: Dict[str, Any], allowed_chars: str = '_') -> Dict[str, Any]:
-    """
-    Replaces non-alphanumeric characters in keys with allowed_chars.
-    Useful for database column mapping or clean config loading.
-    """
-    sanitized = {}
-    for key, value in data.items():
-        clean_key = ''.join(c if c.isalnum() else allowed_chars for c in str(key))
-        if isinstance(value, dict):
-            sanitized[clean_key] = sanitize_keys(value, allowed_chars)
-        else:
-            sanitized[clean_key] = value
-    return sanitized
+def safe_json_load(file_path: str) -> Dict[str, Any]:
+    """Load and parse JSON file with error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"failed to read json at {file_path}: {e}")
+        return {}
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """
-    Splits a list into smaller chunks of specified size.
-    Useful for batch processing large datasets.
-    """
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    return [data[i:i + size] for i in range(0, len(data), size)]
+def chunk_list(data: list, size: int):
+    """Split a list into chunks of specified size."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+def dict_get_nested(data: Dict, path: str, default: Any = None) -> Any:
+    """Retrieve nested dictionary value using dot notation."""
+    keys = path.split('.')
+    curr = data
+    try:
+        for key in keys:
+            curr = curr[key]
+        return curr
+    except (KeyError, TypeError):
+        return default
+
+def ensure_list(item: Any) -> list:
+    """Convert single item to list if not iterable."""
+    if item is None:
+        return []
+    if isinstance(item, (list, tuple, set)):
+        return list(item)
+    return [item]
