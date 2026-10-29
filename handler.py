@@ -1,37 +1,35 @@
-import logging
-import os
+import json
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+def safe_data_extract(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    """
+    Navigates nested dictionary using dot-notation string.
+    Example: safe_data_extract(data, 'user.profile.id')
+    """
+    keys = path.split('.')
+    current = data
+    
+    try:
+        for key in keys:
+            if isinstance(current, dict):
+                current = current.get(key)
+            else:
+                return default
+        return current if current is not None else default
+    except (AttributeError, TypeError, KeyError):
+        return default
 
-class DataHandler:
-    def __init__(self, directory: str = "./data"):
-        self.directory = directory
-        if not os.path.exists(self.directory):
-            os.makedirs(self.directory)
+def format_json_output(data: Any, indent: int = 4) -> str:
+    """
+    Serializes complex data structures to clean JSON string.
+    """
+    try:
+        return json.dumps(data, indent=indent, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return json.dumps({"error": "serialization failed", "details": str(e)})
 
-    def process_payload(self, payload: Dict[str, Any]) -> bool:
-        """Validate and persist incoming data dictionary."""
-        if not payload or "id" not in payload:
-            logger.error("Invalid payload structure: missing id")
-            return False
-        
-        try:
-            file_path = os.path.join(self.directory, f"{payload['id']}.json")
-            import json
-            with open(file_path, "w") as f:
-                json.dump(payload, f, indent=4)
-            return True
-        except (IOError, TypeError) as e:
-            logger.error(f"Failed to write data for {payload['id']}: {e}")
-            return False
-
-    def cleanup_old_files(self, max_files: int = 10) -> None:
-        """Keep directory size manageable by removing oldest files."""
-        files = [os.path.join(self.directory, f) for f in os.listdir(self.directory)]
-        files.sort(key=os.path.getmtime)
-        
-        if len(files) > max_files:
-            for file_to_remove in files[:-max_files]:
-                os.remove(file_to_remove)
-                logger.info(f"Removed stale file: {file_to_remove}")
+def normalize_keys(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Converts all top-level dictionary keys to lowercase.
+    """
+    return {str(k).lower(): v for k, v in data.items()}
