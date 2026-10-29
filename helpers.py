@@ -1,38 +1,32 @@
-import json
-import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+from collections.abc import Mapping
 
-logger = logging.getLogger(__name__)
+def deep_flatten(data: Any, prefix: str = '', separator: str = '.') -> Dict[str, Any]:
+    """Flatten a nested dictionary into a single-level dictionary with keys joined by separator."""
+    items = {}
+    if isinstance(data, Mapping):
+        for key, value in data.items():
+            new_key = f"{prefix}{separator}{key}" if prefix else key
+            if isinstance(value, Mapping):
+                items.update(deep_flatten(value, new_key, separator))
+            else:
+                items[new_key] = value
+    else:
+        items[prefix] = data
+    return items
 
-def safe_json_load(file_path: str) -> Dict[str, Any]:
-    """Load and parse JSON file with error handling."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error(f"failed to read json at {file_path}: {e}")
-        return {}
+def batch_process(items: List[Any], batch_size: int = 10) -> List[List[Any]]:
+    """Split a list into smaller chunks for batch processing."""
+    if batch_size <= 0:
+        raise ValueError("Batch size must be a positive integer")
+    return [items[i:i + batch_size] for i in range(0, len(items), batch_size)]
 
-def chunk_list(data: list, size: int):
-    """Split a list into chunks of specified size."""
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
-
-def dict_get_nested(data: Dict, path: str, default: Any = None) -> Any:
-    """Retrieve nested dictionary value using dot notation."""
-    keys = path.split('.')
-    curr = data
-    try:
-        for key in keys:
-            curr = curr[key]
-        return curr
-    except (KeyError, TypeError):
-        return default
-
-def ensure_list(item: Any) -> list:
-    """Convert single item to list if not iterable."""
-    if item is None:
-        return []
-    if isinstance(item, (list, tuple, set)):
-        return list(item)
-    return [item]
+def safe_get(data: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
+    """Access nested dictionary values safely using a list of keys."""
+    current = data
+    for key in keys:
+        if isinstance(current, Mapping) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
