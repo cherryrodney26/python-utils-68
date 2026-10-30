@@ -1,35 +1,41 @@
-import functools
-from typing import Callable, Any
+import logging
 
-# Cache for compute-intensive transformations to reduce CPU overhead
-_memoization_cache = {}
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def memoize_processor(func: Callable) -> Callable:
-    """Decorator for caching repetitive processor output."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _memoization_cache:
-            _memoization_cache[key] = func(*args, **kwargs)
-        return _memoization_cache[key]
-    return wrapper
+def validate_input(data):
+    """Ensures data is a non-empty dictionary."""
+    if not isinstance(data, dict):
+        return False
+    if not data:
+        return False
+    if 'id' not in data or 'payload' not in data:
+        return False
+    return True
 
-class DataProcessor:
-    """Core processor with performance-oriented batch handling."""
-    def __init__(self, buffer_size: int = 1000):
-        self.buffer_size = buffer_size
+def process_stream(data_stream):
+    """
+    Main processing loop with input validation.
+    Processes valid payloads and logs errors for malformed data.
+    """
+    for index, item in enumerate(data_stream):
+        if not validate_input(item):
+            logger.warning(f"Skipping invalid item at index {index}: {item}")
+            continue
+        
+        try:
+            # Simulate processing logic
+            result = item['payload'].upper()
+            logger.info(f"Processed item {item['id']}: {result}")
+        except Exception as e:
+            logger.error(f"Unexpected error processing item {index}: {e}")
 
-    def batch_process(self, data: list) -> list:
-        """Generator-based approach for memory-efficient iteration."""
-        for i in range(0, len(data), self.buffer_size):
-            chunk = data[i:i + self.buffer_size]
-            yield self._apply_transformations(chunk)
-
-    @memoize_processor
-    def _apply_transformations(self, chunk: list) -> list:
-        """Heavy computation performed on chunks."""
-        return [x * 2 for x in chunk if isinstance(x, (int, float))]
-
-def clear_processor_cache() -> None:
-    """Manual memory reclamation for static cache."""
-    _memoization_cache.clear()
+if __name__ == "__main__":
+    sample_data = [
+        {'id': 1, 'payload': 'hello'},
+        {'id': 2, 'payload': 'world'},
+        None,
+        {},
+        {'id': 3, 'payload': 'data'}
+    ]
+    process_stream(sample_data)
