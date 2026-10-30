@@ -1,23 +1,35 @@
 import re
 from typing import Any, Optional
 
-def is_valid_email(email: str) -> bool:
-    """Validate email address format."""
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
+# Validation patterns for standard input strings
+EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+IP_PATTERN = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
 
-def is_non_empty_string(value: Any) -> bool:
-    """Check if input is a non-empty string."""
-    return isinstance(value, str) and len(value.strip()) > 0
+def validate_email(email: str) -> bool:
+    """Verify email address format against regex."""
+    return bool(EMAIL_PATTERN.match(email))
 
-def is_within_range(value: int, min_val: int, max_val: int) -> bool:
-    """Check if integer is within inclusive bounds."""
-    return isinstance(value, int) and min_val <= value <= max_val
+def validate_ip(ip: str) -> bool:
+    """Verify ipv4 address string structure."""
+    if not IP_PATTERN.match(ip):
+        return False
+    return all(0 <= int(octet) <= 255 for octet in ip.split('.'))
 
-def validate_required_keys(data: dict, keys: list[str]) -> bool:
-    """Verify presence of mandatory keys in dictionary."""
-    return all(key in data for key in keys)
+def ensure_not_none(value: Any, name: str) -> Any:
+    """Check for nullity and raise exception if invalid."""
+    if value is None:
+        raise ValueError(f"parameter {name} cannot be null")
+    return value
 
-def sanitize_input(value: str) -> str:
-    """Remove dangerous characters for basic sanitization."""
-    return re.sub(r'[^a-zA-Z0-9\s]', '', value)
+class ValidatorManager:
+    """Registry for reusable input validation logic."""
+    def __init__(self):
+        self._rules = {}
+
+    def register(self, name: str, func: callable) -> None:
+        self._rules[name] = func
+
+    def check(self, name: str, value: Any) -> bool:
+        if name not in self._rules:
+            raise KeyError(f"validator {name} not defined")
+        return self._rules[name](value)
