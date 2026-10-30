@@ -1,51 +1,61 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # python-utils-68
 
-A collection of lightweight, high-performance Python utilities designed to streamline common development tasks. This library focuses on reducing boilerplate code for file handling, data transformation, and environment configuration.
+A lightweight, zero-dependency Python utility toolkit designed to streamline common data transformation, file handling, and logging workflows. It eliminates redundant boilerplate code across Python projects by providing robust, battle-tested helper modules out of the box.
 
 ## Features
 
-*   **Robust File Operations:** Simplified decorators for recursive file traversal and thread-safe batch processing of large directories.
-*   **Data Transformation:** Built-in sanitization and schema-validation helpers for cleaning messy CSV/JSON exports.
-*   **Env Manager:** A zero-dependency configuration loader that prioritizes environment variables and defaults over `.env` file reading.
-*   **Performance Metrics:** Decorator-based execution timing and memory logging for benchmarking production code in real-time.
+* **Safe Dot-Notation Extraction:** Fetch values from deeply nested dictionaries and JSON payloads safely without triggering `KeyError` or `AttributeError` exceptions.
+* **Atomic File Operations:** Read, write, and update local files with built-in temporary buffering to prevent file corruption during execution failures.
+* **Smart Data Formatters:** Instantly convert byte sizes, microsecond execution times, and Unix timestamps into human-readable strings.
+* **Structured Console Logger:** Configurable, color-coded logging utility with built-in JSON output formatting for cloud monitoring environments.
 
 ## Installation
 
-Install `python-utils-68` directly via pip:
+Install the package directly via `pip`:
 
 ```bash
 pip install python-utils-68
 ```
 
-Alternatively, if you are working within a requirements-based workflow:
+Or install the latest development version from the repository:
 
 ```bash
-echo "python-utils-68==1.0.4" >> requirements.txt
-pip install -r requirements.txt
+git clone https://github.com/Developer/python-utils-68.git
+cd python-utils-68
+pip install .
 ```
 
-## Usage
-
-Below is a quick example of how to use the built-in performance decorator to monitor function execution:
+## Quick Start
 
 ```python
-from pyutils68.metrics import time_execution
-from pyutils68.files import secure_load
+from python_utils_68 import safe_get, format_bytes, AtomicWriter, get_logger
 
-@time_execution
-def process_data(file_path):
-    data = secure_load(file_path)
-    # ... logic here ...
-    return data
+# Initialize structured logger
+logger = get_logger("app_module")
+logger.info("Initializing workflow...")
 
-result = process_data("data/input.json")
+# Extract values from complex nested structures
+payload = {
+    "system": {
+        "metrics": {
+            "memory_usage": 1073741824
+        }
+    }
+}
+
+memory_bytes = safe_get(payload, "system.metrics.memory_usage", default=0)
+print(f"Memory in use: {format_bytes(memory_bytes)}")
+# Output: Memory in use: 1.00 GB
+
+# Safely write data to disk
+with AtomicWriter("output.txt", mode="w") as file:
+    file.write("Processing completed successfully.")
+
+logger.info("Task finished cleanly.")
 ```
 
 ## License
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-*Developed by Developer. Built for reliability and performance.*
