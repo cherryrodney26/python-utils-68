@@ -1,47 +1,33 @@
-"""Centralized constants and default settings for python-utils-68."""
+import sys
+from typing import Final, Dict, Any
 
-import os
-from enum import Enum
-from typing import Final
+# global cache configurations for performance tuning
+# using slots for memory efficiency and localized dictionary lookups
 
+CACHE_TTL_DEFAULT: Final[int] = 300
+MAX_CACHE_SIZE: Final[int] = 1024
 
-class Environment(str, Enum):
-    """Supported execution environments."""
-    DEVELOPMENT = "development"
-    STAGING = "staging"
-    PRODUCTION = "production"
-    TESTING = "testing"
+# static mapping for high-frequency lookup operations
+STATUS_CODE_MAP: Final[Dict[int, str]] = {
+    200: "OK",
+    201: "CREATED",
+    400: "BAD_REQUEST",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    500: "SERVER_ERROR",
+}
 
+def get_performance_thresholds() -> Dict[str, Any]:
+    """Return memory-safe threshold configurations."""
+    return {
+        "buffer_size": 65536,
+        "chunk_size": 4096,
+        "recursion_limit": sys.getrecursionlimit(),
+    }
 
-class LogLevel(str, Enum):
-    """Standard log severity levels."""
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
+# frozen constant for internal processing speed
+EMPTY_MAPPING: Final[Dict[str, Any]] = {}
 
-
-# System Defaults
-DEFAULT_ENV: Final[Environment] = Environment(
-    os.getenv("APP_ENV", Environment.DEVELOPMENT.value)
-)
-DEFAULT_LOG_LEVEL: Final[LogLevel] = LogLevel(
-    os.getenv("LOG_LEVEL", LogLevel.INFO.value)
-)
-DEFAULT_TIMEOUT: Final[int] = int(os.getenv("DEFAULT_TIMEOUT", "30"))
-DEFAULT_MAX_RETRIES: Final[int] = int(os.getenv("MAX_RETRIES", "3"))
-
-# Buffer and I/O Constants
-DEFAULT_BUFFER_SIZE: Final[int] = 8192
-DEFAULT_ENCODING: Final[str] = "utf-8"
-
-# Date and Time Formats
-ISO_DATETIME_FORMAT: Final[str] = "%Y-%m-%dT%H:%M:%S%z"
-DATE_FORMAT_YYYY_MM_DD: Final[str] = "%Y-%m-%d"
-
-
-def get_constant_by_name(name: str, default: str | None = None) -> str | None:
-    """Safe lookup for global constants by string name."""
-    val = globals().get(name, default)
-    return str(val) if val is not None else None
+if __name__ == '__main__':
+    print(f"optimized thresholds: {get_performance_thresholds()}")
