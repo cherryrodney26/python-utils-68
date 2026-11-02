@@ -1,37 +1,36 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
     """
-    Returns a configured logger instance with standard formatting.
+    Configures a logger with rotation support.
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
+    # Prevent duplicate handlers if function called multiple times
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
+        # 5MB per file, keep 3 backup files
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
+        
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        
+        # Optional: Add console output
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
     return logger
 
-def log_exception(logger: logging.Logger, message: str, exc: Exception) -> None:
-    """
-    Utility for consistent error logging with exception traceback.
-    """
-    logger.error(f"{message}: {str(exc)}", exc_info=True)
-
-def setup_basic_logging(level: int = logging.INFO) -> None:
-    """
-    Global configuration for basic logging setup.
-    """
-    logging.basicConfig(
-        level=level,
-        format='%(levelname)s: %(message)s',
-        stream=sys.stdout
-    )
+if __name__ == '__main__':
+    log = setup_logger('dev_logger', 'development.log')
+    log.info('logger setup complete')
