@@ -1,42 +1,70 @@
-import functools
-from itertools import islice
-from typing import Any, Callable, Generator, Iterable, List, Optional
+"""Core utility functions for data manipulation and functional helpers."""
+
+from functools import wraps
+import time
+from typing import Any, Callable, Dict, Iterable, List, TypeVar
+
+T = TypeVar("T")
 
 
-class FastBatchProcessor:
-    """High-performance batch processing engine with memoized transforms."""
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Flatten a nested dictionary by concatenating keys with a separator.
 
-    def __init__(self, batch_size: int = 1000) -> None:
-        if batch_size <= 0:
-            raise ValueError("batch_size must be a positive integer")
-        self.batch_size = batch_size
+    Args:
+        d: The nested dictionary to flatten.
+        parent_key: Prefix for keys at current recursion depth.
+        sep: Separator string between nested keys.
 
-    @functools.lru_cache(maxsize=4096)
-    def _memoized_transform(self, item: Any, transform_fn: Callable[[Any], Any]) -> Any:
-        """Cache repeated transformations on identical data elements."""
-        return transform_fn(item)
+    Returns:
+        A flat dictionary with string keys and primitive values.
+    """
+    items: List[tuple[str, Any]] = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    def chunk_iterable(self, iterable: Iterable[Any]) -> Generator[List[Any], None, None]:
-        """Yield successive chunks from iterable without loading full stream into memory."""
-        iterator = iter(iterable)
-        while True:
-            chunk = list(islice(iterator, self.batch_size))
-            if not chunk:
-                break
-            yield chunk
 
-    def process_stream(
-        self,
-        data_stream: Iterable[Any],
-        transform_fn: Callable[[Any], Any],
-        filter_fn: Optional[Callable[[Any], bool]] = None,
-    ) -> Generator[Any, None, None]:
-        """Stream processing pipeline utilizing batched chunks and cached transforms."""
-        for batch in self.chunk_iterable(data_stream):
-            items = (item for item in batch if filter_fn(item)) if filter_fn else batch
-            for item in items:
-                yield self._memoized_transform(item, transform_fn)
+def chunk_iterable(iterable: Iterable[T], size: int) -> List[List[T]]:
+    """Split an iterable into fixed-size chunks.
 
-    def clear_cache(self) -> None:
-        """Reset internal transformer lookup cache."""
-        self._memoized_transform.cache_clear()
+    Args:
+        iterable: Sequence or iterable to divide into chunks.
+        size: Maximum size of each chunk.
+
+    Returns:
+        List of lists containing elements grouped into chunks.
+
+    Raises:
+        ValueError: If chunk size is less than 1.
+    """
+    if size < 1:
+        raise ValueError("Chunk size must be at least 1")
+    items = list(iterable)
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def measure_time(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator that prints execution duration of a function.
+
+    Args:
+        func: Function to measure.
+
+    Returns:
+        Wrapped function with timing instrumentation.
+    """
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        elapsed = time.perf_counter() - start
+        print(f"[{func.__name__}] executed in {elapsed:.4f}s")
+        return result
+
+    return wrapper
