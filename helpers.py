@@ -1,32 +1,28 @@
-from typing import Any, Dict, List, Optional
-from collections.abc import Mapping
+import json
+import os
+from typing import Any, Dict, Optional
 
-def deep_flatten(data: Any, prefix: str = '', separator: str = '.') -> Dict[str, Any]:
-    """Flatten a nested dictionary into a single-level dictionary with keys joined by separator."""
-    items = {}
-    if isinstance(data, Mapping):
-        for key, value in data.items():
-            new_key = f"{prefix}{separator}{key}" if prefix else key
-            if isinstance(value, Mapping):
-                items.update(deep_flatten(value, new_key, separator))
-            else:
-                items[new_key] = value
-    else:
-        items[prefix] = data
-    return items
+def load_json_file(filepath: str) -> Dict[str, Any]:
+    """Reads and parses a JSON file into a dictionary."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def batch_process(items: List[Any], batch_size: int = 10) -> List[List[Any]]:
-    """Split a list into smaller chunks for batch processing."""
-    if batch_size <= 0:
-        raise ValueError("Batch size must be a positive integer")
-    return [items[i:i + batch_size] for i in range(0, len(items), batch_size)]
+def save_json_file(filepath: str, data: Dict[str, Any]) -> None:
+    """Serializes a dictionary to a JSON file."""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
-def safe_get(data: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
-    """Access nested dictionary values safely using a list of keys."""
-    current = data
-    for key in keys:
-        if isinstance(current, Mapping) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieves environment variable with fallback default."""
+    return os.environ.get(key, default or '')
+
+def chunk_list(data: list, size: int):
+    """Splits a list into smaller chunks of defined size."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+def sanitize_path(path: str) -> str:
+    """Normalizes and cleans filesystem paths."""
+    return os.path.normpath(path.strip())
