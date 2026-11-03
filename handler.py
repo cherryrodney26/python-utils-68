@@ -1,39 +1,28 @@
-import time
-import functools
-import logging
-from typing import Callable, Any
+import json
+from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+def clean_data(data: Any, default: Any = None) -> Any:
+    """Recursively removes null values from dictionaries."""
+    if isinstance(data, dict):
+        return {k: clean_data(v) for k, v in data.items() if v is not None}
+    elif isinstance(data, list):
+        return [clean_data(item) for item in data]
+    return data
 
-def with_retry(retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
-    """
-    Decorator to retry network operations with exponential backoff.
-    """
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            current_delay = delay
-            last_exception = None
+def safe_json_load(content: str) -> Dict[str, Any]:
+    """Robust parsing for json string input."""
+    try:
+        return json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            
-            logger.error(f"Operation failed after {retries} attempts.")
-            raise last_exception
-        return wrapper
-    return decorator
-
-@with_retry(retries=3, delay=2.0)
-def fetch_remote_resource(url: str):
-    """
-    Example network operation wrapper.
-    """
-    logger.info(f"Fetching data from {url}")
-    # Simulate network instability
-    raise ConnectionError("Server unreachable")
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten nested dictionary keys."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
