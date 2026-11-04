@@ -1,62 +1,33 @@
-"""Safe data retrieval and conversion utilities with robust edge case handling."""
+import logging
+from typing import Any, Dict, Optional
 
-import math
-from typing import Any, Mapping, Optional, TypeVar, Union
+# Configure logging for the main processing loop
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
+def validate_payload(data: Any) -> bool:
+    """Ensure input data is a non-empty dictionary."""
+    if not isinstance(data, dict):
+        return False
+    if not data:
+        return False
+    return True
 
+def process_items(queue: list) -> None:
+    """Main processing loop with input validation."""
+    for index, item in enumerate(queue):
+        if not validate_payload(item):
+            logger.error(f"Invalid data format at index {index}: {item}")
+            continue
 
-def safe_get(
-    data: Any,
-    key_path: str,
-    default: Optional[T] = None,
-    delimiter: str = "."
-) -> Union[Any, T]:
-    """
-    Safely retrieve nested values from dictionary or list structures.
-    Handles None input, missing keys, out-of-bound indices, and invalid types.
-    """
-    if not key_path or not isinstance(key_path, str):
-        return default
+        try:
+            # Process valid business logic here
+            result = item.get("value", 0) * 2
+            logger.info(f"Processed item {index}: result={result}")
+        except Exception as e:
+            logger.exception(f"Unexpected error processing index {index}: {e}")
 
-    if data is None:
-        return default
-
-    keys = key_path.split(delimiter)
-    current = data
-
-    for key in keys:
-        if current is None:
-            return default
-
-        if isinstance(current, Mapping):
-            current = current.get(key, default)
-        elif isinstance(current, (list, tuple)):
-            try:
-                index = int(key)
-                if 0 <= index < len(current):
-                    current = current[index]
-                else:
-                    return default
-            except (ValueError, TypeError):
-                return default
-        else:
-            return default
-
-    return current
-
-
-def safe_cast_float(value: Any, default: float = 0.0) -> float:
-    """
-    Safely cast input to float, handling NaN, Infinity, and type errors.
-    """
-    if value is None:
-        return default
-
-    try:
-        result = float(value)
-        if math.isnan(result) or math.isinf(result):
-            return default
-        return result
-    except (ValueError, TypeError, OverflowError):
-        return default
+if __name__ == "__main__":
+    # Example usage for python-utils-68 loop
+    sample_data = [{"value": 10}, "invalid_string", {}, {"value": 5}]
+    process_items(sample_data)
