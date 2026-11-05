@@ -1,28 +1,59 @@
-import json
-import os
-from typing import Any, Dict, Optional
+import functools
+import time
+from typing import Any, Callable, Generator, Sequence, TypeVar
 
-def load_json_file(filepath: str) -> Dict[str, Any]:
-    """Reads and parses a JSON file into a dictionary."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+T = TypeVar("T")
 
-def save_json_file(filepath: str, data: Dict[str, Any]) -> None:
-    """Serializes a dictionary to a JSON file."""
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
 
-def get_env_variable(key: str, default: Optional[str] = None) -> str:
-    """Retrieves environment variable with fallback default."""
-    return os.environ.get(key, default or '')
+def chunk_iterable(iterable: Sequence[T], chunk_size: int) -> Generator[Sequence[T], None, None]:
+    """Yield successive n-sized chunks from a sequence."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be a positive integer")
+    for i in range(0, len(iterable), chunk_size):
+        yield iterable[i : i + chunk_size]
 
-def chunk_list(data: list, size: int):
-    """Splits a list into smaller chunks of defined size."""
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
 
-def sanitize_path(path: str) -> str:
-    """Normalizes and cleans filesystem paths."""
-    return os.path.normpath(path.strip())
+def flatten_dict(d: dict[str, Any], parent_key: str = "", sep: str = ".") -> dict[str, Any]:
+    """Flatten a nested dictionary using key concatenation."""
+    items: list[tuple[str, Any]] = []
+    for key, value in d.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
+        if isinstance(value, dict):
+            items.extend(flatten_dict(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
+
+
+def human_readable_size(size_bytes: int) -> str:
+    """Format a byte count into a human-readable string representation."""
+    if size_bytes < 0:
+        raise ValueError("size_bytes must be non-negative")
+    if size_bytes == 0:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    i = 0
+    size = float(size_bytes)
+    while size >= 1024.0 and i < len(units) - 1:
+        size /= 1024.0
+        i += 1
+    return f"{size:.2f} {units[i]}" if i > 0 else f"{int(size)} B"
+
+
+def retry(max_attempts: int = 3, delay: float = 1.0, exceptions: tuple[type[BaseException], ...] = (Exception,)) -> Callable:
+    """Decorator to retry a function call on specific exceptions."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as err:
+                    last_exception = err
+                    if attempt < max_attempts and delay > 0:
+                        time.sleep(delay)
+            if last_exception:
+                raise last_exception
+        return wrapper
+    return decorator
