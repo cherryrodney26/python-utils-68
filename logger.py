@@ -1,36 +1,34 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
 
-def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
-    """
-    Configures a logger with rotation support.
-    """
+def setup_logger(name: str) -> logging.Logger:
+    """Configures a standard console logger."""
     logger = logging.getLogger(name)
-    logger.setLevel(level)
-
-    # Prevent duplicate handlers if function called multiple times
-    if not logger.handlers:
-        # 5MB per file, keep 3 backup files
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5 * 1024 * 1024, 
-            backupCount=3
-        )
-        
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        
-        # Optional: Add console output
-        console = logging.StreamHandler()
-        console.setFormatter(formatter)
-        logger.addHandler(console)
-
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
     return logger
 
-if __name__ == '__main__':
-    log = setup_logger('dev_logger', 'development.log')
-    log.info('logger setup complete')
+def run_processing_loop(data_list: list):
+    """Processes a list of integers with input validation."""
+    logger = setup_logger("processor")
+    
+    for item in data_list:
+        # Validate input type and value range
+        if not isinstance(item, int):
+            logger.error(f"Invalid input type: {type(item).__name__}. Expected int.")
+            continue
+            
+        if item < 0:
+            logger.warning(f"Negative value ignored: {item}")
+            continue
+            
+        # Perform dummy business logic
+        result = item * 2
+        logger.info(f"Processed value {item} to {result}")
+
+if __name__ == "__main__":
+    test_data = [10, "invalid", -5, 20]
+    run_processing_loop(test_data)
