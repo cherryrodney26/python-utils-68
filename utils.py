@@ -1,30 +1,36 @@
-from typing import List, Any, Dict, Optional
+import functools
+import time
+from typing import Callable, Any, Dict
 
+# Cache for storing expensive function results
+_CACHE: Dict[tuple, Any] = {}
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """
-    Divide a list into smaller segments of a specified size.
-    """
-    if size <= 0:
-        raise ValueError("Chunk size must be a positive integer")
-    return [data[i : i + size] for i in range(0, len(data), size)]
+def memoize(func: Callable) -> Callable:
+    """Performance decorator for caching function return values."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
+def batch_process(data: list, chunk_size: int = 100):
+    """Generator for memory-efficient chunked list processing."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
-def format_dict_keys(data: Dict[str, Any], prefix: str = "item") -> Dict[str, Any]:
-    """
-    Prepend a prefix string to all keys in a dictionary.
-    """
-    return {f"{prefix}_{key}": value for key, value in data.items()}
+def timed_execution(func: Callable) -> Callable:
+    """Decorator for monitoring execution performance overhead."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        print(f"DEBUG: {func.__name__} took {end - start:.6f}s")
+        return result
+    return wrapper
 
-
-def get_nested(data: Dict[str, Any], keys: List[str], default: Optional[Any] = None) -> Any:
-    """
-    Retrieve a value from a nested dictionary using a list of keys.
-    """
-    current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return default
+def clear_cache() -> None:
+    """Reset internal memory storage for optimizations."""
+    _CACHE.clear()
