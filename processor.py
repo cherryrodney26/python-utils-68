@@ -1,41 +1,41 @@
 import logging
+from typing import Any, Optional, Dict
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_input(data):
-    """Ensures data is a non-empty dictionary."""
-    if not isinstance(data, dict):
-        return False
-    if not data:
-        return False
-    if 'id' not in data or 'payload' not in data:
-        return False
-    return True
+class ProcessingError(Exception):
+    """Custom exception for processor edge cases."""
+    pass
 
-def process_stream(data_stream):
-    """
-    Main processing loop with input validation.
-    Processes valid payloads and logs errors for malformed data.
-    """
-    for index, item in enumerate(data_stream):
-        if not validate_input(item):
-            logger.warning(f"Skipping invalid item at index {index}: {item}")
-            continue
+def process_data(data: Any, schema: Optional[Dict] = None) -> Any:
+    """Processes input data with boundary checking."""
+    if data is None:
+        logger.warning("Received null data input")
+        return None
+
+    try:
+        if isinstance(data, dict):
+            # Ensure schema compatibility if provided
+            if schema:
+                for key in schema:
+                    if key not in data:
+                        raise ProcessingError(f"Missing required key: {key}")
+            return {k: v for k, v in data.items() if v is not None}
         
-        try:
-            # Simulate processing logic
-            result = item['payload'].upper()
-            logger.info(f"Processed item {item['id']}: {result}")
-        except Exception as e:
-            logger.error(f"Unexpected error processing item {index}: {e}")
+        elif isinstance(data, (list, tuple)):
+            return [item for item in data if item is not None]
+        
+        else:
+            raise ProcessingError(f"Unsupported data type: {type(data).__name__}")
+            
+    except (TypeError, ValueError) as e:
+        logger.error(f"Data transformation failure: {e}")
+        raise ProcessingError("Critical failure during data serialization") from e
 
 if __name__ == "__main__":
-    sample_data = [
-        {'id': 1, 'payload': 'hello'},
-        {'id': 2, 'payload': 'world'},
-        None,
-        {},
-        {'id': 3, 'payload': 'data'}
-    ]
-    process_stream(sample_data)
+    # Example usage for demonstration
+    try:
+        result = process_data({"a": 1, "b": None}, schema=["a"])
+        print(f"Processed: {result}")
+    except ProcessingError as err:
+        print(f"Caught expected error: {err}")
