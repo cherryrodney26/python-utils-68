@@ -1,32 +1,27 @@
-import logging
-from typing import Any, Callable, Optional
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two dictionaries for configuration management."""
+    result = base.copy()
+    for key, value in override.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = merge_configs(result[key], value)
+        else:
+            result[key] = value
+    return result
 
-class OperationError(Exception):
-    """Base exception for utility operations."""
-    pass
+def format_data(items: List[Any], prefix: Optional[str] = None) -> List[str]:
+    """Convert list of items to string representations with optional prefix."""
+    formatted = [str(item) for item in items]
+    if prefix:
+        return [f"{prefix}{item}" for item in formatted]
+    return formatted
 
-def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
-    """Executes a function with safety wrappers for common edge cases."""
-    try:
-        if not callable(func):
-            raise ValueError(f"Expected callable, got {type(func).__name__}")
-        
-        return func(*args, **kwargs)
-    
-    except (TypeError, ValueError, AttributeError) as e:
-        logger.error(f"Argument or attribute error in {func.__name__}: {e}")
-        return default
-    
-    except Exception as e:
-        logger.critical(f"Unexpected failure during execution: {e}")
-        raise OperationError(f"Critical failure in {func.__name__}") from e
+class DataProcessor:
+    """Basic utility class for batch data transformation."""
+    def __init__(self, multiplier: float = 1.0) -> None:
+        self.multiplier = multiplier
 
-def validate_input(data: Optional[Any]) -> bool:
-    """Checks input for null or empty edge cases."""
-    if data is None:
-        return False
-    if isinstance(data, (str, list, dict)) and len(data) == 0:
-        return False
-    return True
+    def process(self, values: List[float]) -> List[float]:
+        """Apply multiplier to all numeric values in list."""
+        return [v * self.multiplier for v in values]
