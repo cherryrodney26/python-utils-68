@@ -1,33 +1,46 @@
-import sys
-from typing import Final, Dict, Any
+import os
 
-# global cache configurations for performance tuning
-# using slots for memory efficiency and localized dictionary lookups
+class AppConstants:
+    """
+    Centralized application constants with robust retrieval.
+    """
+    
+    MAX_RETRIES = 5
+    TIMEOUT_DEFAULT = 30
+    ENV_VAR_PREFIX = "PYUTILS_"
 
-CACHE_TTL_DEFAULT: Final[int] = 300
-MAX_CACHE_SIZE: Final[int] = 1024
+    @classmethod
+    def get_setting(cls, key: str, default=None):
+        """
+        Safe lookup for environment configuration settings.
+        Returns default if key is missing or invalid.
+        """
+        if not isinstance(key, str) or not key:
+            return default
 
-# static mapping for high-frequency lookup operations
-STATUS_CODE_MAP: Final[Dict[int, str]] = {
-    200: "OK",
-    201: "CREATED",
-    400: "BAD_REQUEST",
-    401: "UNAUTHORIZED",
-    403: "FORBIDDEN",
-    404: "NOT_FOUND",
-    500: "SERVER_ERROR",
-}
+        full_key = f"{cls.ENV_VAR_PREFIX}{key.upper()}"
+        value = os.environ.get(full_key)
 
-def get_performance_thresholds() -> Dict[str, Any]:
-    """Return memory-safe threshold configurations."""
-    return {
-        "buffer_size": 65536,
-        "chunk_size": 4096,
-        "recursion_limit": sys.getrecursionlimit(),
-    }
+        if value is None:
+            return default
 
-# frozen constant for internal processing speed
-EMPTY_MAPPING: Final[Dict[str, Any]] = {}
+        try:
+            # Handle basic type casting based on common patterns
+            if value.lower() in ("true", "false"):
+                return value.lower() == "true"
+            if value.isdigit():
+                return int(value)
+            return value
+        except (ValueError, TypeError):
+            return default
 
-if __name__ == '__main__':
-    print(f"optimized thresholds: {get_performance_thresholds()}")
+# Pre-initialized constants for core system operations
+MIN_BUFFER_SIZE = 1024
+MAX_BUFFER_SIZE = 1024 * 1024 * 64
+SUPPORTED_EXTENSIONS = {'.json', '.yaml', '.txt'}
+
+# Exit codes mapping for consistent error handling
+EXIT_SUCCESS = 0
+EXIT_FAILURE_GENERAL = 1
+EXIT_FAILURE_CONFIG = 2
+EXIT_FAILURE_TIMEOUT = 3
