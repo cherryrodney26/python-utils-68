@@ -1,54 +1,29 @@
-"""General utility helpers for data manipulation and safe execution."""
+import json
+import os
+from typing import Any, Dict, Optional
 
-import time
-from typing import Any, Callable, Dict, Iterable, List, Optional, TypeVar
+def load_json(file_path: str) -> Dict[str, Any]:
+    """Load and parse a JSON file safely."""
+    if not os.path.exists(file_path):
+        return {}
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-T = TypeVar("T")
+def save_json(data: Dict[str, Any], file_path: str) -> None:
+    """Serialize data to a JSON file."""
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieve environment variable with fallback."""
+    return os.environ.get(key, default) or ''
 
-def deep_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merges dict2 into dict1 without mutating input dictionaries."""
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
+def ensure_directory(path: str) -> None:
+    """Create directory structure if missing."""
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-
-def chunk_iterable(iterable: Iterable[T], chunk_size: int) -> List[List[T]]:
-    """Splits an iterable collection into fixed-size chunks."""
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be greater than zero")
-    items = list(iterable)
-    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
-
-
-def safe_execute(
-    func: Callable[..., T],
-    *args: Any,
-    default: Optional[T] = None,
-    retries: int = 0,
-    delay: float = 0.5,
-    **kwargs: Any,
-) -> Optional[T]:
-    """Executes a callable safely, retrying on failure before returning default."""
-    attempts = 0
-    while attempts <= retries:
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            attempts += 1
-            if attempts > retries:
-                return default
-            time.sleep(delay)
-    return default
-
-
-def truncate_string(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncates text to specified maximum length appending suffix if needed."""
-    if len(text) <= max_length:
-        return text
-    trim_len = max(0, max_length - len(suffix))
-    return text[:trim_len] + suffix
+def chunk_list(data: list, size: int):
+    """Yield successive chunks from list."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
