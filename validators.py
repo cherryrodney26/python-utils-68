@@ -1,35 +1,64 @@
-import re
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-# Validation patterns for standard input strings
-EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-IP_PATTERN = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
 
-def validate_email(email: str) -> bool:
-    """Verify email address format against regex."""
-    return bool(EMAIL_PATTERN.match(email))
+class ValidationError(ValueError):
+    """Raised when data validation fails."""
+    pass
 
-def validate_ip(ip: str) -> bool:
-    """Verify ipv4 address string structure."""
-    if not IP_PATTERN.match(ip):
-        return False
-    return all(0 <= int(octet) <= 255 for octet in ip.split('.'))
 
-def ensure_not_none(value: Any, name: str) -> Any:
-    """Check for nullity and raise exception if invalid."""
-    if value is None:
-        raise ValueError(f"parameter {name} cannot be null")
+def validate_dict_structure(
+    data: Any,
+    required_keys: List[str],
+    type_schema: Optional[Dict[str, type]] = None
+) -> Dict[str, Any]:
+    """
+    Validates a dictionary against required keys and optional type constraints.
+    Handles edge cases such as None inputs, non-dict types, missing keys, and invalid types.
+    """
+    if data is None:
+        raise ValidationError("Input data cannot be None")
+    
+    if not isinstance(data, dict):
+        raise ValidationError(f"Expected dict, got {type(data).__name__}")
+    
+    missing_keys = [key for key in required_keys if key not in data]
+    if missing_keys:
+        raise ValidationError(f"Missing required keys: {', '.join(missing_keys)}")
+    
+    if type_schema:
+        for key, expected_type in type_schema.items():
+            if key in data and data[key] is not None:
+                if not isinstance(data[key], expected_type):
+                    raise ValidationError(
+                        f"Key '{key}' expected type {expected_type.__name__}, "
+                        f"got {type(data[key]).__name__}"
+                    )
+    return data
+
+
+def validate_numeric_range(
+    value: Union[int, float],
+    min_val: Optional[Union[int, float]] = None,
+    max_val: Optional[Union[int, float]] = None
+) -> Union[int, float]:
+    """
+    Validates that a numeric value falls within an optional min/max range.
+    Handles edge cases like NaN, boolean inputs, non-numeric types, and range boundaries.
+    """
+    if value is None or isinstance(value, bool):
+        raise ValidationError("Value must be a valid number (int or float)")
+    
+    if not isinstance(value, (int, float)):
+        raise ValidationError(f"Expected int or float, got {type(value).__name__}")
+    
+    # Check for NaN floating point values
+    if value != value:
+        raise ValidationError("Numeric value cannot be NaN")
+    
+    if min_val is not None and value < min_val:
+        raise ValidationError(f"Value {value} is below minimum allowed value {min_val}")
+        
+    if max_val is not None and value > max_val:
+        raise ValidationError(f"Value {value} is above maximum allowed value {max_val}")
+        
     return value
-
-class ValidatorManager:
-    """Registry for reusable input validation logic."""
-    def __init__(self):
-        self._rules = {}
-
-    def register(self, name: str, func: callable) -> None:
-        self._rules[name] = func
-
-    def check(self, name: str, value: Any) -> bool:
-        if name not in self._rules:
-            raise KeyError(f"validator {name} not defined")
-        return self._rules[name](value)
