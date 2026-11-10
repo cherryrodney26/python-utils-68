@@ -1,28 +1,28 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 class ConfigLoader:
-    """Handles loading and merging of application configuration."""
+    """Handles loading and validation of application configurations."""
+    
+    def __init__(self, env_prefix: str = "APP_"):
+        self.prefix = env_prefix
 
-    def __init__(self, defaults: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize with optional default settings."""
-        self._config: Dict[str, Any] = defaults or {}
+    def get_settings(self) -> Dict[str, Any]:
+        """Extract environment variables prefixed with application settings."""
+        return {
+            key[len(self.prefix):].lower(): value
+            for key, value in os.environ.items()
+            if key.startswith(self.prefix)
+        }
 
-    def load_from_env(self, prefix: str = "APP_") -> None:
-        """Update configuration from environment variables with matching prefix."""
-        for key, value in os.environ.items():
-            if key.startswith(prefix):
-                clean_key = key[len(prefix):].lower()
-                self._config[clean_key] = value
+    @staticmethod
+    def validate(config: Dict[str, Any], required_keys: list) -> bool:
+        """Ensure essential configuration keys exist."""
+        return all(key in config for key in required_keys)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve a configuration value by key."""
-        return self._config.get(key, default)
+# Global default configuration instance
+default_config = ConfigLoader().get_settings()
 
-    def update(self, new_data: Dict[str, Any]) -> None:
-        """Merge new configuration data into current settings."""
-        self._config.update(new_data)
-
-    def all(self) -> Dict[str, Any]:
-        """Return the full configuration dictionary."""
-        return self._config.copy()
+def get_app_setting(key: str, default: Any = None) -> Any:
+    """Access specific setting with fallback support."""
+    return default_config.get(key, default)
