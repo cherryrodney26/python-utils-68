@@ -1,27 +1,34 @@
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Optional, Callable
 
-def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge two dictionaries for configuration management."""
-    result = base.copy()
-    for key, value in override.items():
-        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
-            result[key] = merge_configs(result[key], value)
-        else:
-            result[key] = value
-    return result
+logger = logging.getLogger(__name__)
 
-def format_data(items: List[Any], prefix: Optional[str] = None) -> List[str]:
-    """Convert list of items to string representations with optional prefix."""
-    formatted = [str(item) for item in items]
-    if prefix:
-        return [f"{prefix}{item}" for item in formatted]
-    return formatted
+def safe_execute(func: Callable, *args: Any, default: Any = None) -> Any:
+    """
+    Execute a function safely with comprehensive error trapping
+    for common execution edge cases.
+    """
+    try:
+        if not callable(func):
+            raise ValueError(f"Provided object {func} is not callable")
+        return func(*args)
+    except (ValueError, TypeError, KeyError, IndexError) as e:
+        logger.error(f"Data processing error in {func.__name__}: {e}")
+        return default
+    except Exception as e:
+        logger.critical(f"Unexpected system failure during {func.__name__}: {e}")
+        return default
 
-class DataProcessor:
-    """Basic utility class for batch data transformation."""
-    def __init__(self, multiplier: float = 1.0) -> None:
-        self.multiplier = multiplier
-
-    def process(self, values: List[float]) -> List[float]:
-        """Apply multiplier to all numeric values in list."""
-        return [v * self.multiplier for v in values]
+def validate_input(data: Any, expected_type: type) -> Optional[Any]:
+    """
+    Strict validation for data integrity across utilities.
+    """
+    if data is None:
+        return None
+    
+    try:
+        if not isinstance(data, expected_type):
+            return None
+        return data
+    except Exception:
+        return None
