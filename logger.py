@@ -1,35 +1,28 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from typing import Optional
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
-    """Configures a rotating file logger for the application."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+class AppLogger:
+    """Standardized logging utility for python-utils-68."""
 
-    # Prevent duplicate handlers if logger is re-initialized
-    if not logger.handlers:
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    def __init__(self, name: str, level: int = logging.INFO):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        self._setup_handler()
 
-        # 5MB file rotation
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5*1024*1024, 
-            backupCount=3
-        )
-        handler.setFormatter(formatter)
-        
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        
-        logger.addHandler(handler)
-        logger.addHandler(console_handler)
+    def _setup_handler(self) -> None:
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-    return logger
+    def get_logger(self) -> logging.Logger:
+        """Access the underlying logger instance."""
+        return self.logger
 
-# Example usage initialization
-if __name__ == '__main__':
-    app_logger = setup_logger('core_logger')
-    app_logger.info('Logger initialized successfully')
+def get_module_logger(name: str) -> logging.Logger:
+    """Factory function for consistent module logging."""
+    return AppLogger(name).get_logger()
