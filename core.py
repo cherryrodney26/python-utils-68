@@ -1,34 +1,43 @@
-import logging
-from typing import Any, Optional, Callable
+from typing import Any, Dict, List, Optional
+import json
 
-logger = logging.getLogger(__name__)
+def load_json_config(file_path: str) -> Dict[str, Any]:
+    """
+    Reads a JSON configuration file from the filesystem.
 
-def safe_execute(func: Callable, *args: Any, default: Any = None) -> Any:
-    """
-    Execute a function safely with comprehensive error trapping
-    for common execution edge cases.
-    """
-    try:
-        if not callable(func):
-            raise ValueError(f"Provided object {func} is not callable")
-        return func(*args)
-    except (ValueError, TypeError, KeyError, IndexError) as e:
-        logger.error(f"Data processing error in {func.__name__}: {e}")
-        return default
-    except Exception as e:
-        logger.critical(f"Unexpected system failure during {func.__name__}: {e}")
-        return default
+    Args:
+        file_path: The absolute or relative path to the json file.
 
-def validate_input(data: Any, expected_type: type) -> Optional[Any]:
+    Returns:
+        A dictionary containing the configuration data.
     """
-    Strict validation for data integrity across utilities.
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def sanitize_input(data: List[str]) -> List[str]:
     """
-    if data is None:
-        return None
-    
-    try:
-        if not isinstance(data, expected_type):
-            return None
-        return data
-    except Exception:
-        return None
+    Cleans a list of strings by stripping whitespace.
+
+    Args:
+        data: A list of input strings to be cleaned.
+
+    Returns:
+        A list of cleaned and trimmed strings.
+    """
+    return [item.strip() for item in data if item]
+
+def format_response(status: str, message: Optional[str] = None) -> Dict[str, str]:
+    """
+    Constructs a standardized response dictionary.
+
+    Args:
+        status: The response status code or label.
+        message: An optional status description string.
+
+    Returns:
+        A dictionary containing the formatted response payload.
+    """
+    response: Dict[str, str] = {"status": status}
+    if message:
+        response["message"] = message
+    return response
