@@ -1,43 +1,53 @@
-from typing import Any, Dict, List, Optional
-import json
+"""General core utilities for data manipulation and function execution."""
 
-def load_json_config(file_path: str) -> Dict[str, Any]:
-    """
-    Reads a JSON configuration file from the filesystem.
+import time
+from functools import wraps
+from typing import Any, Dict, List, Iterable, Generator, Callable, Type, Tuple
 
-    Args:
-        file_path: The absolute or relative path to the json file.
 
-    Returns:
-        A dictionary containing the configuration data.
-    """
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+def deep_merge(dict1: Dict[Any, Any], dict2: Dict[Any, Any]) -> Dict[Any, Any]:
+    """Recursively merge dict2 into dict1 and return a new dictionary."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
 
-def sanitize_input(data: List[str]) -> List[str]:
-    """
-    Cleans a list of strings by stripping whitespace.
 
-    Args:
-        data: A list of input strings to be cleaned.
+def chunk_iterable(iterable: Iterable[Any], chunk_size: int) -> Generator[List[Any], None, None]:
+    """Yield successive n-sized chunks from an iterable."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than 0")
+    
+    chunk = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
-    Returns:
-        A list of cleaned and trimmed strings.
-    """
-    return [item.strip() for item in data if item]
 
-def format_response(status: str, message: Optional[str] = None) -> Dict[str, str]:
-    """
-    Constructs a standardized response dictionary.
-
-    Args:
-        status: The response status code or label.
-        message: An optional status description string.
-
-    Returns:
-        A dictionary containing the formatted response payload.
-    """
-    response: Dict[str, str] = {"status": status}
-    if message:
-        response["message"] = message
-    return response
+def retry(
+    max_attempts: int = 3, 
+    delay: float = 1.0, 
+    exceptions: Tuple[Type[BaseException], ...] = (Exception,)
+) -> Callable:
+    """Decorator to retry a function call if specified exceptions occur."""
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        raise e
+                    time.sleep(delay)
+        return wrapper
+    return decorator
