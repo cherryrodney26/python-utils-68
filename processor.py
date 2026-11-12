@@ -1,41 +1,59 @@
-import logging
-from typing import Any, Optional, Dict
+from typing import Any, Callable, Dict, List, Tuple
 
-logger = logging.getLogger(__name__)
 
-class ProcessingError(Exception):
-    """Custom exception for processor edge cases."""
-    pass
+class DataProcessor:
+    """Processes a stream or list of items with strict input validation."""
 
-def process_data(data: Any, schema: Optional[Dict] = None) -> Any:
-    """Processes input data with boundary checking."""
-    if data is None:
-        logger.warning("Received null data input")
-        return None
+    def __init__(self, validator: Callable[[Any], bool] = None):
+        self.validator = validator or self._default_validator
 
-    try:
-        if isinstance(data, dict):
-            # Ensure schema compatibility if provided
-            if schema:
-                for key in schema:
-                    if key not in data:
-                        raise ProcessingError(f"Missing required key: {key}")
-            return {k: v for k, v in data.items() if v is not None}
-        
-        elif isinstance(data, (list, tuple)):
-            return [item for item in data if item is not None]
-        
-        else:
-            raise ProcessingError(f"Unsupported data type: {type(data).__name__}")
-            
-    except (TypeError, ValueError) as e:
-        logger.error(f"Data transformation failure: {e}")
-        raise ProcessingError("Critical failure during data serialization") from e
+    @staticmethod
+    def _default_validator(item: Any) -> bool:
+        """Default validation checks if item is non-None and non-empty if container."""
+        if item is None:
+            return False
+        if isinstance(item, (str, dict, list, set, tuple)) and len(item) == 0:
+            return False
+        return True
 
-if __name__ == "__main__":
-    # Example usage for demonstration
-    try:
-        result = process_data({"a": 1, "b": None}, schema=["a"])
-        print(f"Processed: {result}")
-    except ProcessingError as err:
-        print(f"Caught expected error: {err}")
+    def process_batch(self, items: List[Any]) -> Tuple[List[Any], List[Dict[str, Any]]]:
+        """Runs the main processing loop with input validation.
+
+        Returns processed results and validation error records.
+        """
+        processed_results = []
+        validation_errors = []
+
+        for index, item in enumerate(items):
+            # Input validation in the main processing loop
+            if not isinstance(item, (dict, list, str, int, float)):
+                validation_errors.append(
+                    {"index": index, "item": item, "reason": "Unsupported data type"}
+                )
+                continue
+
+            if not self.validator(item):
+                validation_errors.append(
+                    {
+                        "index": index,
+                        "item": item,
+                        "reason": "Failed validation check",
+                    }
+                )
+                continue
+
+            # Transform valid item
+            transformed = self._transform(item)
+            processed_results.append(transformed)
+
+        return processed_results, validation_errors
+
+    def _transform(self, item: Any) -> Any:
+        """Applies basic processing transformation to valid inputs."""
+        if isinstance(item, str):
+            return item.strip().lower()
+        if isinstance(item, (int, float)):
+            return item * 2
+        if isinstance(item, dict):
+            return {k: self._transform(v) for k, v in item.items() if v is not None}
+        return item
