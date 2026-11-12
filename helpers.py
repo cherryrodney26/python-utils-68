@@ -1,29 +1,58 @@
-import json
-import os
-from typing import Any, Dict, Optional
+"""General helper utilities with standard error handling for edge cases."""
 
-def load_json(file_path: str) -> Dict[str, Any]:
-    """Load and parse a JSON file safely."""
-    if not os.path.exists(file_path):
-        return {}
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+from typing import Any, Dict, List, Union
 
-def save_json(data: Dict[str, Any], file_path: str) -> None:
-    """Serialize data to a JSON file."""
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
 
-def get_env_variable(key: str, default: Optional[str] = None) -> str:
-    """Retrieve environment variable with fallback."""
-    return os.environ.get(key, default) or ''
+def safe_cast(value: Any, target_type: type, default: Any = None) -> Any:
+    """Safely cast a value to a target type with default fallback on failure."""
+    if value is None:
+        return default
+    try:
+        return target_type(value)
+    except (ValueError, TypeError, OverflowError):
+        return default
 
-def ensure_directory(path: str) -> None:
-    """Create directory structure if missing."""
-    if not os.path.exists(path):
-        os.makedirs(path)
 
-def chunk_list(data: list, size: int):
-    """Yield successive chunks from list."""
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+def get_nested(data: Union[Dict, List], path: str, default: Any = None, delimiter: str = ".") -> Any:
+    """Retrieve a nested value from dict/list structure using a delimited path string."""
+    if not isinstance(path, str) or not path:
+        return default
+
+    keys = path.split(delimiter)
+    current = data
+
+    for key in keys:
+        if isinstance(current, dict):
+            current = current.get(key, default)
+        elif isinstance(current, (list, tuple)):
+            try:
+                idx = int(key)
+                current = current[idx]
+            except (ValueError, IndexError, TypeError):
+                return default
+        else:
+            return default
+
+        if current is default:
+            break
+
+    return current
+
+
+def format_bytes(size: Union[int, float, str]) -> str:
+    """Format byte sizes into a human-readable string representation."""
+    try:
+        num = float(size)
+        if num < 0:
+            return "0.00 B"
+    except (ValueError, TypeError):
+        return "0.00 B"
+
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    unit_index = 0
+
+    while num >= 1024.0 and unit_index < len(units) - 1:
+        num /= 1024.0
+        unit_index += 1
+
+    return f"{num:.2f} {units[unit_index]}"
